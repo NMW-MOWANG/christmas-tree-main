@@ -179,12 +179,13 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
 export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos }) => {
   // Static default photos paths
   const defaultPhotos = useMemo(() => [
-    '/default-photos/photo1.jpg',
-    '/default-photos/photo2.jpg',
-    '/default-photos/photo3.jpg',
-    '/default-photos/photo4.jpg',
-    '/default-photos/photo5.jpg',
-    '/default-photos/photo6.jpg'
+    '/default-photos/微信图片_2025-12-10_220948_363.jpg',
+    '/default-photos/微信图片_2025-12-10_221046_956.jpg',
+    '/default-photos/微信图片_2025-12-10_221056_333.jpg',
+    '/default-photos/微信图片_2025-12-10_221131_029.jpg',
+    '/default-photos/微信图片_2025-12-10_221155_234.jpg',
+    '/default-photos/微信图片_2025-12-10_221216_483.jpg',
+    '/default-photos/微信图片_2025-12-10_221230_490.jpg'
   ].filter(Boolean), []);
 
   const photoData = useMemo(() => {
