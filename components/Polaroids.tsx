@@ -182,9 +182,11 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos }) =>
     '/default-photos/photo1.jpg',
     '/default-photos/photo2.jpg',
     '/default-photos/photo3.jpg',
-    '/default-photos/photo4.png',
+    '/default-photos/photo4.jpg',
     '/default-photos/photo5.jpg',
-    '/default-photos/photo6.jpg'
+    '/default-photos/photo6.jpg',
+    '/default-photos/photo7.jpg',
+    '/default-photos/photo8.png',
   ].filter(Boolean), []);
 
   const photoData = useMemo(() => {
