@@ -179,14 +179,14 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
 export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos }) => {
   // Static default photos paths - all replaced with online image
   const defaultPhotos = useMemo(() => [
-    'https://i.ibb.co/SDz1Vb0T/9-DB317-FE51845-FAC1-D142-E686.jpg',
-    'https://i.ibb.co/SDz1Vb0T/9-DB317-FE51845-FAC1-D142-E686.jpg',
-    'https://i.ibb.co/SDz1Vb0T/9-DB317-FE51845-FAC1-D142-E686.jpg',
-    'https://i.ibb.co/SDz1Vb0T/9-DB317-FE51845-FAC1-D142-E686.jpg',
-    'https://i.ibb.co/SDz1Vb0T/9-DB317-FE51845-FAC1-D142-E686.jpg',
-    'https://i.ibb.co/SDz1Vb0T/9-DB317-FE51845-FAC1-D142-E686.jpg',
-    'https://i.ibb.co/SDz1Vb0T/9-DB317-FE51845-FAC1-D142-E686.jpg',
-    'https://i.ibb.co/SDz1Vb0T/9-DB317-FE51845-FAC1-D142-E686.jpg',
+    'https://pic1.imgdb.cn/item/693bc4d721aca2102b1ebc6a.jpg',
+    'https://pic1.imgdb.cn/item/693bc4d721aca2102b1ebc6a.jpg',
+    'https://pic1.imgdb.cn/item/693bc4d721aca2102b1ebc6a.jpg',
+    'https://pic1.imgdb.cn/item/693bc4d721aca2102b1ebc6a.jpg',
+    'https://pic1.imgdb.cn/item/693bc4d721aca2102b1ebc6a.jpg',
+    'https://pic1.imgdb.cn/item/693bc4d721aca2102b1ebc6a.jpg',
+    'https://pic1.imgdb.cn/item/693bc4d721aca2102b1ebc6a.jpg',
+    'https://pic1.imgdb.cn/item/693bc4d721aca2102b1ebc6a.jpg',
   ].filter(Boolean), []);
 
   const photoData = useMemo(() => {
