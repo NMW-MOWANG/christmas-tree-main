@@ -199,17 +199,21 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
 };
 
 export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos }) => {
-  // Static default photos paths - using local images for maximum reliability
-  const defaultPhotos = useMemo(() => [
-    '/default-photos/photo1.jpg',
-    '/default-photos/photo2.jpg',
-    '/default-photos/photo3.jpg',
-    '/default-photos/photo4.jpg',
-    '/default-photos/photo5.jpg',
-    '/default-photos/photo6.jpg',
-    '/default-photos/photo7.jpg',
-    '/default-photos/photo8.png',
-  ].filter(Boolean), []);
+  // Static default photos paths - using local images with deployment-safe URLs
+  const defaultPhotos = useMemo(() => {
+    // Use relative paths that work in both development and production
+    const basePath = import.meta.env.BASE_URL || '/';
+    return [
+      `${basePath}default-photos/photo1.jpg`,
+      `${basePath}default-photos/photo2.jpg`,
+      `${basePath}default-photos/photo3.jpg`,
+      `${basePath}default-photos/photo4.jpg`,
+      `${basePath}default-photos/photo5.jpg`,
+      `${basePath}default-photos/photo6.jpg`,
+      `${basePath}default-photos/photo7.jpg`,
+      `${basePath}default-photos/photo8.png`,
+    ].filter(Boolean);
+  }, []);
 
   const photoData = useMemo(() => {
     // Use uploaded photos if available, otherwise use default photos
