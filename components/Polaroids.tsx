@@ -199,16 +199,16 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
 };
 
 export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos }) => {
-  // Static default photos paths - using reliable placehold.co service for mobile compatibility
+  // Static default photos paths - using local images for maximum reliability
   const defaultPhotos = useMemo(() => [
-    'https://placehold.co/400x400/0f172a/ffffff.png?text=Christmas+2025',
-    'https://placehold.co/400x400/1e293b/ffffff.png?text=Happy+Holidays',
-    'https://placehold.co/400x400/334155/ffffff.png?text=Festive+Season',
-    'https://placehold.co/400x400/475569/ffffff.png?text=Joy+and+Peace',
-    'https://placehold.co/400x400/64748b/ffffff.png?text=Winter+Wonderland',
-    'https://placehold.co/400x400/94a3b8/ffffff.png?text=Snowflakes+Fall',
-    'https://placehold.co/400x400/cbd5e1/ffffff.png?text=Warm+Wishes',
-    'https://placehold.co/400x400/e2e8f0/1e293b.png?text=Season%27s+Greetings',
+    '/default-photos/photo1.jpg',
+    '/default-photos/photo2.jpg',
+    '/default-photos/photo3.jpg',
+    '/default-photos/photo4.jpg',
+    '/default-photos/photo5.jpg',
+    '/default-photos/photo6.jpg',
+    '/default-photos/photo7.jpg',
+    '/default-photos/photo8.png',
   ].filter(Boolean), []);
 
   const photoData = useMemo(() => {
