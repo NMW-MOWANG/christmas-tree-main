@@ -41,46 +41,69 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
   const groupRef = useRef<THREE.Group>(null);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [error, setError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Safe texture loading with fallback for mobile devices
+  // Safe texture loading with better error handling and graceful degradation
   useEffect(() => {
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin('anonymous');
     
-    const loadImage = (url: string, fallbackUrls: string[] = []) => {
+    const loadImage = (url: string, fallbackUrls: string[] = [], attempt = 1) => {
+      setIsLoading(true);
+      
+      const timeoutId = setTimeout(() => {
+        // Timeout handling - if loading takes too long, consider it failed
+        if (attempt >= 3) {
+          console.warn(`Image loading timeout after ${attempt} attempts for: ${url}`);
+          handleFinalFailure();
+        } else {
+          console.log(`Retry attempt ${attempt} for: ${url}`);
+          loadImage(url, fallbackUrls, attempt + 1);
+        }
+      }, 5000); // 5 second timeout per attempt
+      
       loader.load(
         url,
         (loadedTex) => {
+          clearTimeout(timeoutId);
           loadedTex.colorSpace = THREE.SRGBColorSpace;
           setTexture(loadedTex);
           setError(false);
+          setIsLoading(false);
         },
         undefined,
         (err) => {
+          clearTimeout(timeoutId);
           console.warn(`Failed to load image: ${url}`, err);
           
           // Try fallback URLs if available
           if (fallbackUrls.length > 0) {
             const nextFallback = fallbackUrls[0];
             console.log(`Trying fallback image: ${nextFallback}`);
-            loadImage(nextFallback, fallbackUrls.slice(1));
+            loadImage(nextFallback, fallbackUrls.slice(1), 1);
           } else {
             console.error('All image loading attempts failed');
-            setError(true);
+            handleFinalFailure();
           }
         }
       );
     };
     
+    const handleFinalFailure = () => {
+      setError(true);
+      setIsLoading(false);
+      console.warn(`Polaroid ${index} will be hidden due to image loading failure`);
+    };
+    
     // Primary URL with fallback options
     const fallbackUrls = [
       data.url,
-      'https://picsum.photos/400/400', // Reliable fallback
-      '/default-photos/photo1.jpg'     // Local fallback
-    ].filter(url => url !== data.url); // Remove duplicate primary URL
+      'https://picsum.photos/400/400?random=' + index,
+      `${import.meta.env.BASE_URL || '/'}default-photos/photo${(index % 8) + 1}.${(index % 8) === 7 ? 'png' : 'jpg'}`
+    ].filter(url => url !== data.url);
     
-    loadImage(data.url, fallbackUrls);
-  }, [data.url]);
+    loadImage(data.url, fallbackUrls, 1);
+  }, [data.url, index]);
   
   // Random sway offset
   const swayOffset = useMemo(() => Math.random() * 100, []);
@@ -148,6 +171,11 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
     }
   });
 
+  // Hide the entire component if image loading completely failed
+  if (error) {
+    return null;
+  }
+
   return (
     <group ref={groupRef}>
       
@@ -169,11 +197,11 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
         {/* The Photo Area */}
         <mesh position={[0, 0.15, 0.025]}>
           <planeGeometry args={[1.0, 1.0]} />
-          {texture && !error ? (
+          {texture ? (
             <meshBasicMaterial map={texture} />
           ) : (
-            // Fallback Material (Red for error, Grey for loading)
-            <meshStandardMaterial color={error ? "#550000" : "#cccccc"} />
+            // Loading state - light grey placeholder
+            <meshStandardMaterial color="#cccccc" />
           )}
         </mesh>
         
@@ -191,7 +219,7 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
           anchorX="center"
           anchorY="middle"
         >
-          {error ? "Image not found" : "Happy Memories"}
+          {texture ? "Happy Memories" : "Loading..."}
         </Text>
       </group>
     </group>
