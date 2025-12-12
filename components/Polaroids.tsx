@@ -301,7 +301,7 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos }) =>
       });
     }
     return data;
-  }, [uploadedPhotos]);
+  }, [uploadedPhotos, defaultPhotos]);
 
   return (
     <group>
