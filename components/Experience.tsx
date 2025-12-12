@@ -83,8 +83,9 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
         enabled={true}
       />
 
-      {/* Lighting Setup for Maximum Luxury */}
-      <Environment preset="lobby" background={false} blur={0.8} />
+      {/* Lighting Setup (临时禁用 HDR 验证场景加载；如需 HDR，改回 <Environment files="/env.hdr" /> 并确保 public/env.hdr 存在) */}
+      {/* <Environment files="/env.hdr" background={false} blur={0.8} /> */}
+      <color attach="background" args={['#101010']} />
       
       <ambientLight intensity={0.2} color="#004422" />
       <spotLight 
