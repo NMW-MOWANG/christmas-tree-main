@@ -179,12 +179,14 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
 export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos }) => {
   // Static default photos paths
   const defaultPhotos = useMemo(() => [
-    // '/default-photos/photo1.jpg',
-    // '/default-photos/photo2.jpg',
-    // '/default-photos/photo3.jpg',
-    '/default-photos/photo4.png',
-    // '/default-photos/photo5.jpg',
-    // '/default-photos/photo6.jpg'
+    '/default-photos/photo1.jpg',
+    '/default-photos/photo2.jpg',
+    '/default-photos/photo3.jpg',
+    '/default-photos/photo4.jpg',
+    '/default-photos/photo5.jpg',
+    '/default-photos/photo6.jpg',
+    '/default-photos/photo7.jpg',
+    '/default-photos/photo8.png',
   ].filter(Boolean), []);
 
   const photoData = useMemo(() => {
