@@ -42,22 +42,44 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [error, setError] = useState(false);
 
-  // Safe texture loading that won't crash the app if a file is missing
+  // Safe texture loading with fallback for mobile devices
   useEffect(() => {
     const loader = new THREE.TextureLoader();
-    loader.load(
+    loader.setCrossOrigin('anonymous');
+    
+    const loadImage = (url: string, fallbackUrls: string[] = []) => {
+      loader.load(
+        url,
+        (loadedTex) => {
+          loadedTex.colorSpace = THREE.SRGBColorSpace;
+          setTexture(loadedTex);
+          setError(false);
+        },
+        undefined,
+        (err) => {
+          console.warn(`Failed to load image: ${url}`, err);
+          
+          // Try fallback URLs if available
+          if (fallbackUrls.length > 0) {
+            const nextFallback = fallbackUrls[0];
+            console.log(`Trying fallback image: ${nextFallback}`);
+            loadImage(nextFallback, fallbackUrls.slice(1));
+          } else {
+            console.error('All image loading attempts failed');
+            setError(true);
+          }
+        }
+      );
+    };
+    
+    // Primary URL with fallback options
+    const fallbackUrls = [
       data.url,
-      (loadedTex) => {
-        loadedTex.colorSpace = THREE.SRGBColorSpace;
-        setTexture(loadedTex);
-        setError(false);
-      },
-      undefined, // onProgress
-      (err) => {
-        console.warn(`Failed to load image: ${data.url}`, err);
-        setError(true);
-      }
-    );
+      'https://picsum.photos/400/400', // Reliable fallback
+      '/default-photos/photo1.jpg'     // Local fallback
+    ].filter(url => url !== data.url); // Remove duplicate primary URL
+    
+    loadImage(data.url, fallbackUrls);
   }, [data.url]);
   
   // Random sway offset
