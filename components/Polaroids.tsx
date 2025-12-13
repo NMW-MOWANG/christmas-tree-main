@@ -27,6 +27,7 @@ const PHOTO_COUNT = 22; // How many polaroid frames to generate
 interface PolaroidsProps {
   mode: TreeMode;
   uploadedPhotos: string[];
+  indexFingerDetected?: boolean; // 食指手势检测
 }
 
 interface PhotoData {
@@ -34,10 +35,18 @@ interface PhotoData {
   url: string;
   chaosPos: THREE.Vector3;
   targetPos: THREE.Vector3;
+  zoomPos: THREE.Vector3; // 放大时的位置
   speed: number;
+  distanceFactor: number; // 用于自适应缩放的距离因子
 }
 
-const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }> = ({ data, mode, index }) => {
+const PolaroidItem: React.FC<{ 
+  data: PhotoData; 
+  mode: TreeMode; 
+  index: number;
+  isZoomed?: boolean;
+  zoomScale?: number;
+}> = ({ data, mode, index, isZoomed = false, zoomScale = 1 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [error, setError] = useState(false);
@@ -115,11 +124,22 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
     const time = state.clock.elapsedTime;
     
     // 1. Position Interpolation
-    const targetPos = isFormed ? data.targetPos : data.chaosPos;
+    let targetPos = isFormed ? data.targetPos : data.chaosPos;
+
+    // 如果被放大，使用专门的放大位置
+    if (isZoomed) {
+      targetPos = data.zoomPos;
+    }
+    
     const step = delta * data.speed;
     
     // Smooth lerp to target position
     groupRef.current.position.lerp(targetPos, step);
+    
+    // 应用缩放
+    const targetScale = isZoomed ? zoomScale : 1;
+    const currentScale = groupRef.current.scale.x;
+    groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), delta * 5);
 
     // 2. Rotation & Sway Logic
     if (isFormed) {
@@ -150,24 +170,35 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
         
     } else {
         // Chaos mode - face toward camera with gentle floating
-        // Camera position relative to scene group: [0, 9, 20]
-        const cameraPos = new THREE.Vector3(0, 9, 20);
+        // 获取相机位置（考虑场景组偏移）
+        const camera = state.camera;
+        const cameraWorldPos = new THREE.Vector3();
+        camera.getWorldPosition(cameraWorldPos);
+        // 场景组偏移是 [0, -6, 0]，所以相机相对位置需要调整
+        const relativeCameraPos = new THREE.Vector3(
+          cameraWorldPos.x,
+          cameraWorldPos.y + 6, // 补偿场景组偏移
+          cameraWorldPos.z
+        );
+        
         const dummy = new THREE.Object3D();
         dummy.position.copy(groupRef.current.position);
         
         // Make photos face the camera
-        dummy.lookAt(cameraPos);
+        dummy.lookAt(relativeCameraPos);
         
         // Smoothly rotate to face camera
         groupRef.current.quaternion.slerp(dummy.quaternion, delta * 3);
         
-        // Add gentle floating wobble
-        const wobbleX = Math.sin(time * 1.5 + swayOffset) * 0.03;
-        const wobbleZ = Math.cos(time * 1.2 + swayOffset) * 0.03;
-        
-        const currentRot = new THREE.Euler().setFromQuaternion(groupRef.current.quaternion);
-        groupRef.current.rotation.x = currentRot.x + wobbleX;
-        groupRef.current.rotation.z = currentRot.z + wobbleZ;
+        // Add gentle floating wobble (只在非放大状态)
+        if (!isZoomed) {
+          const wobbleX = Math.sin(time * 1.5 + swayOffset) * 0.03;
+          const wobbleZ = Math.cos(time * 1.2 + swayOffset) * 0.03;
+          
+          const currentRot = new THREE.Euler().setFromQuaternion(groupRef.current.quaternion);
+          groupRef.current.rotation.x = currentRot.x + wobbleX;
+          groupRef.current.rotation.z = currentRot.z + wobbleZ;
+        }
     }
   });
 
@@ -226,7 +257,9 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
   );
 };
 
-export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos }) => {
+export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, indexFingerDetected = false }) => {
+  const [zoomedIndex, setZoomedIndex] = useState<number | null>(null);
+  const photoDataRef = useRef<PhotoData[]>([]);
   // Static default photos paths - using local images with deployment-safe URLs
   const defaultPhotos = useMemo(() => {
     // Use relative paths that work in both development and production
@@ -275,39 +308,107 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos }) =>
         r * Math.sin(theta)
       );
 
-      // 2. Chaos Position - Spread out and closer to camera
-      // Camera is at [0, 4, 20], Scene group offset is [0, -5, 0]
-      // So relative to scene, camera is at y=9
-      const relativeY = 5; // Lower position for better visibility
-      const relativeZ = 20; // Camera Z
-      
-      // Create positions spread widely around camera, very close
-      const angle = (i / count) * Math.PI * 2; // Distribute evenly
-      const distance = 3 + Math.random() * 4; // Distance 3-7 units (very close)
-      const heightSpread = (Math.random() - 0.5) * 8; // Height variation -4 to +4 (more spread)
-      
-      const chaosPos = new THREE.Vector3(
-        distance * Math.cos(angle) * 1.2, // X spread wider
-        relativeY + heightSpread, // More vertical spread
-        relativeZ - 4 + distance * Math.sin(angle) * 0.5 // Very close to camera (Z ~16-19)
-      );
+      // 2. Chaos Position - Spread out within screen bounds, facing camera
+      // 确保拍立得在屏幕范围内且面向相机
+      // 使用视口坐标计算，确保不超出屏幕
+      const aspect = window.innerWidth / window.innerHeight;
+      const fov = 45; // 与App.tsx中的默认FOV一致
+      const cameraZ = 20; // 相机Z位置
+
+      // 计算屏幕边界（在相机前方的平面上）
+      const chaosPlaneDistance = cameraZ - 4; // 混乱模式拍立得平面距离相机的距离
+      const planeHeight = 2 * Math.tan((fov * Math.PI / 180) / 2) * chaosPlaneDistance;
+      const planeWidth = planeHeight * aspect;
+
+      // 限制散开范围在屏幕内（留出边距）
+      const margin = 0.3; // 30%边距
+      const maxX = planeWidth * (1 - margin) / 2;
+      const maxY = planeHeight * (1 - margin) / 2;
+
+      // 在屏幕范围内均匀分布
+      const angle = (i / count) * Math.PI * 2;
+      const radius = Math.min(maxX, maxY) * 0.8; // 使用较小的维度确保不超出
+      const x = Math.cos(angle) * radius * (Math.random() * 0.5 + 0.75); // 添加一些随机性
+      const chaosY = Math.sin(angle) * radius * (Math.random() * 0.5 + 0.75);
+      const z = cameraZ - 4; // 固定Z位置，确保面向相机
+
+      const chaosPos = new THREE.Vector3(x, chaosY + 5, z); // y+5 补偿场景组偏移
+
+      // 3. Zoom Position - 随机分散在屏幕内，但更靠近相机
+      const zoomPlaneDistance = cameraZ - 8; // 放大时更靠近相机
+      const zoomPlaneHeight = 2 * Math.tan((fov * Math.PI / 180) / 2) * zoomPlaneDistance;
+      const zoomPlaneWidth = zoomPlaneHeight * aspect;
+
+      // 放大时的可用范围（留出更多边距以确保完全可见）
+      const zoomMargin = 0.2; // 20%边距
+      const zoomMaxX = zoomPlaneWidth * (1 - zoomMargin) / 2;
+      const zoomMaxY = zoomPlaneHeight * (1 - zoomMargin) / 2;
+
+      // 为每个拍立得生成随机放大位置
+      const zoomX = (Math.random() - 0.5) * 2 * zoomMaxX;
+      const zoomY = (Math.random() - 0.5) * 2 * zoomMaxY;
+      const zoomZ = cameraZ - 8; // 更靠近相机的固定Z位置
+
+      // 根据位置计算距离相机的距离，用于自适应缩放
+      const distanceToCamera = Math.sqrt(zoomX * zoomX + zoomY * zoomY + zoomZ * zoomZ);
+      const minDistance = Math.abs(zoomZ); // 最小距离是正前方的距离
+      const maxDistance = Math.sqrt(zoomMaxX * zoomMaxX + zoomMaxY * zoomMaxY + zoomZ * zoomZ);
+      // 归一化距离因子：距离越近，因子越大 (0.2 到 1.0)
+      const distanceFactor = 1 - ((distanceToCamera - minDistance) / (maxDistance - minDistance));
+      const clampedDistanceFactor = Math.max(0.2, Math.min(1.0, distanceFactor)); // 确保在合理范围内
+
+      const zoomPos = new THREE.Vector3(zoomX, zoomY + 5, zoomZ); // y+5 补偿场景组偏移
+
+      // 调试信息
+      if (i === 0) {
+        console.log(`Polaroid ${i}: zoomPos(${zoomX.toFixed(2)}, ${zoomY.toFixed(2)}, ${zoomZ}), distanceFactor: ${clampedDistanceFactor.toFixed(2)}`);
+      }
 
       data.push({
         id: i,
         url: photosToUse[i],
         chaosPos,
         targetPos,
-        speed: 0.8 + Math.random() * 1.5 // Variable speed
+        zoomPos,
+        speed: 0.8 + Math.random() * 1.5, // Variable speed
+        distanceFactor: clampedDistanceFactor // 存储修正后的距离因子用于缩放计算
       });
     }
+    photoDataRef.current = data;
     return data;
   }, [uploadedPhotos, defaultPhotos]);
 
+  // 检测食指手势，放大所有拍立得并分散
+  useEffect(() => {
+    if (indexFingerDetected && photoDataRef.current.length > 0) {
+      // 放大所有拍立得，使用一个特殊值表示全部放大
+      setZoomedIndex(-1); // -1 表示所有拍立得都放大
+    } else {
+      setZoomedIndex(null);
+    }
+  }, [indexFingerDetected, mode]);
+
   return (
     <group>
-      {photoData.map((data, i) => (
-        <PolaroidItem key={i} index={i} data={data} mode={mode} />
-      ))}
+      {photoData.map((data, i) => {
+        const isZoomed = zoomedIndex === -1; // 所有拍立得同时放大
+        // 使用距离因子实现自适应缩放
+        // 距离相机越近（distanceFactor越大），放大倍数越大
+        const baseZoomScale = 1.5; // 基础放大倍数
+        const maxZoomScale = 3.5; // 最大放大倍数
+        const zoomScale = isZoomed ? baseZoomScale + data.distanceFactor * (maxZoomScale - baseZoomScale) : 1;
+
+        return (
+          <PolaroidItem
+            key={i}
+            index={i}
+            data={data}
+            mode={mode}
+            isZoomed={isZoomed}
+            zoomScale={zoomScale}
+          />
+        );
+      })}
     </group>
   );
 };

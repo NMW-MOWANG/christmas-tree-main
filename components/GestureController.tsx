@@ -7,9 +7,15 @@ interface GestureControllerProps {
   onModeChange: (mode: TreeMode) => void;
   currentMode: TreeMode;
   onHandPosition?: (x: number, y: number, detected: boolean) => void;
+  onIndexFingerDetected?: (detected: boolean) => void;
 }
 
-export const GestureController: React.FC<GestureControllerProps> = ({ onModeChange, currentMode, onHandPosition }) => {
+export const GestureController: React.FC<GestureControllerProps> = ({ 
+  onModeChange, 
+  currentMode, 
+  onHandPosition,
+  onIndexFingerDetected 
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [handPos, setHandPos] = useState<{ x: number; y: number } | null>(null);
   const lastModeRef = useRef<TreeMode>(currentMode);
@@ -17,6 +23,7 @@ export const GestureController: React.FC<GestureControllerProps> = ({ onModeChan
   // Debounce logic refs
   const openFrames = useRef(0);
   const closedFrames = useRef(0);
+  const indexFingerFrames = useRef(0);
   const CONFIDENCE_THRESHOLD = 5; // Number of consecutive frames to confirm gesture
 
   useEffect(() => {
@@ -25,13 +32,18 @@ export const GestureController: React.FC<GestureControllerProps> = ({ onModeChan
 
     const setupMediaPipe = async () => {
       try {
+        console.log("🎯 初始化 MediaPipe 手势识别...");
+
         // Use jsDelivr CDN (accessible in China)
+        console.log("📦 加载 MediaPipe Vision 模块...");
         const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
         );
+        console.log("✅ MediaPipe Vision 模块加载成功");
 
         // Use local model file to avoid loading from Google Storage (blocked in China)
         // Model file should be downloaded using: npm run download-model or download-model.bat/.sh
+        console.log("🤖 加载手势识别模型...");
         handLandmarker = await HandLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath: `/models/hand_landmarker.task`,
@@ -40,29 +52,43 @@ export const GestureController: React.FC<GestureControllerProps> = ({ onModeChan
           runningMode: "VIDEO",
           numHands: 1
         });
+        console.log("✅ 手势识别模型加载成功");
 
         startWebcam();
       } catch (error) {
-        console.error("Error initializing MediaPipe:", error);
-        console.warn("Gesture control is unavailable. The app will still work without it.");
+        console.error("❌ MediaPipe 初始化错误:", error);
+        console.warn("⚠️ 手势控制不可用，应用仍可正常使用其他功能");
         // Don't block the app if gesture control fails
       }
     };
 
     const startWebcam = async () => {
+      console.log("📹 启动摄像头...");
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
+          console.log("🔍 请求摄像头权限...");
           const stream = await navigator.mediaDevices.getUserMedia({
             video: { width: 320, height: 240, facingMode: "user" }
           });
-          
+          console.log("✅ 摄像头权限获取成功");
+
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
-            videoRef.current.addEventListener("loadeddata", predictWebcam);
+            videoRef.current.addEventListener("loadeddata", () => {
+              console.log("🎥 摄像头视频流已准备就绪，开始手势检测");
+              predictWebcam();
+            });
           }
         } catch (err) {
-          console.error("Error accessing webcam:", err);
+          console.error("❌ 摄像头访问错误:", err);
+          if (err.name === 'NotAllowedError') {
+            console.warn("⚠️ 摄像头权限被拒绝，请在浏览器中允许摄像头访问");
+          } else if (err.name === 'NotFoundError') {
+            console.warn("⚠️ 未检测到摄像头设备");
+          }
         }
+      } else {
+        console.warn("⚠️ 浏览器不支持摄像头访问");
       }
     };
     const predictWebcam = () => {
@@ -80,10 +106,11 @@ export const GestureController: React.FC<GestureControllerProps> = ({ onModeChan
             if (onHandPosition) {
               onHandPosition(0.5, 0.5, false); // No hand detected
             }
-            // Reset counters if hand is lost? 
+            // Reset counters if hand is lost?
             // Better to keep them to prevent flickering if hand blips out for 1 frame
             openFrames.current = Math.max(0, openFrames.current - 1);
             closedFrames.current = Math.max(0, closedFrames.current - 1);
+            indexFingerFrames.current = Math.max(0, indexFingerFrames.current - 1);
         }
       }
 
@@ -94,40 +121,40 @@ export const GestureController: React.FC<GestureControllerProps> = ({ onModeChan
       // 0 is Wrist
       // Tips: 8 (Index), 12 (Middle), 16 (Ring), 20 (Pinky)
       // Bases (MCP): 5, 9, 13, 17
-      
+
       const wrist = landmarks[0];
-      
+
       // Calculate palm center (average of wrist and finger bases)
       // Finger bases (MCP joints): 5, 9, 13, 17
       const palmCenterX = (landmarks[0].x + landmarks[5].x + landmarks[9].x + landmarks[13].x + landmarks[17].x) / 5;
       const palmCenterY = (landmarks[0].y + landmarks[5].y + landmarks[9].y + landmarks[13].y + landmarks[17].y) / 5;
-      
+
       // Send hand position for camera control
       // Normalize coordinates: x and y are in [0, 1], center at (0.5, 0.5)
       setHandPos({ x: palmCenterX, y: palmCenterY });
       if (onHandPosition) {
         onHandPosition(palmCenterX, palmCenterY, true);
       }
-      
+
       const fingerTips = [8, 12, 16, 20];
       const fingerBases = [5, 9, 13, 17];
-      
+
       let extendedFingers = 0;
 
       for (let i = 0; i < 4; i++) {
         const tip = landmarks[fingerTips[i]];
         const base = landmarks[fingerBases[i]];
-        
+
         // Calculate distance from wrist to tip vs wrist to base
         const distTip = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
         const distBase = Math.hypot(base.x - wrist.x, base.y - wrist.y);
-        
+
         // Heuristic: If tip is significantly further from wrist than base, it's extended
         if (distTip > distBase * 1.5) { // 1.5 multiplier is a safe heuristic for extension
           extendedFingers++;
         }
       }
-      
+
       // Thumb check (Tip 4 vs Base 2)
       const thumbTip = landmarks[4];
       const thumbBase = landmarks[2];
@@ -135,8 +162,42 @@ export const GestureController: React.FC<GestureControllerProps> = ({ onModeChan
       const distThumbBase = Math.hypot(thumbBase.x - wrist.x, thumbBase.y - wrist.y);
       if (distThumbTip > distThumbBase * 1.2) extendedFingers++;
 
+      // 检测食指单独伸出
+      const indexTip = landmarks[8];
+      const indexBase = landmarks[5];
+      const indexExtended = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y) >
+                            Math.hypot(indexBase.x - wrist.x, indexBase.y - wrist.y) * 1.5;
+
+      // 检查其他手指是否收起（只有食指伸出）
+      const otherFingersExtended = extendedFingers - (indexExtended ? 1 : 0);
+      const onlyIndexFinger = indexExtended && otherFingersExtended === 0;
+
+      // 调试信息
+      if (indexFingerFrames.current % 30 === 0) { // 每30帧打印一次
+        console.log(`👋 手势检测: 伸出手指数=${extendedFingers}, 食指单独伸出=${onlyIndexFinger}, 食指连续帧数=${indexFingerFrames.current}`);
+      }
+
+      if (onlyIndexFinger) {
+        indexFingerFrames.current++;
+        openFrames.current = 0;
+        closedFrames.current = 0;
+
+        if (indexFingerFrames.current > CONFIDENCE_THRESHOLD && onIndexFingerDetected) {
+          console.log(`👆 食指手势确认！触发拍立得放大`);
+          onIndexFingerDetected(true);
+        }
+      } else {
+        if (indexFingerFrames.current > CONFIDENCE_THRESHOLD) {
+          console.log(`✋ 取消食指手势`);
+        }
+        indexFingerFrames.current = 0;
+        if (onIndexFingerDetected) {
+          onIndexFingerDetected(false);
+        }
+      }
+      
       // DECISION
-      if (extendedFingers >= 4) {
+      if (extendedFingers >= 4 && !onlyIndexFinger) {
         // OPEN HAND -> UNLEASH (CHAOS)
         openFrames.current++;
         closedFrames.current = 0;
@@ -148,7 +209,7 @@ export const GestureController: React.FC<GestureControllerProps> = ({ onModeChan
             }
         }
 
-      } else if (extendedFingers <= 1) {
+      } else if (extendedFingers <= 1 && !onlyIndexFinger) {
         // CLOSED FIST -> RESTORE (FORMED)
         closedFrames.current++;
         openFrames.current = 0;
@@ -159,7 +220,7 @@ export const GestureController: React.FC<GestureControllerProps> = ({ onModeChan
                 onModeChange(TreeMode.FORMED);
             }
         }
-      } else {
+      } else if (!onlyIndexFinger) {
         // Ambiguous
         openFrames.current = 0;
         closedFrames.current = 0;

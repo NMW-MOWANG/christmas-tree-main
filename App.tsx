@@ -50,6 +50,52 @@ export default function App() {
   const [mode, setMode] = useState<TreeMode>(TreeMode.FORMED);
   const [handPosition, setHandPosition] = useState<{ x: number; y: number; detected: boolean }>({ x: 0.5, y: 0.5, detected: false });
   const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([]);
+  const [cameraConfig, setCameraConfig] = useState({ fov: 45, distance: 20 });
+  const [indexFingerDetected, setIndexFingerDetected] = useState(false);
+
+  // 自适应屏幕尺寸
+  React.useEffect(() => {
+    const updateCamera = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const aspect = width / height;
+      
+      // 根据屏幕尺寸调整FOV和距离，确保圣诞树不超出屏幕
+      let fov = 45;
+      let distance = 20;
+      
+      if (width < 768) {
+        // 移动设备
+        fov = 50;
+        distance = 18;
+      } else if (width < 1024) {
+        // 平板
+        fov = 47;
+        distance = 19;
+      } else {
+        // 桌面
+        fov = 45;
+        distance = 20;
+      }
+      
+      // 根据宽高比进一步调整
+      if (aspect > 2) {
+        // 超宽屏
+        fov = Math.max(40, fov - 5);
+        distance = Math.max(18, distance + 2);
+      } else if (aspect < 1) {
+        // 竖屏
+        fov = Math.min(55, fov + 5);
+        distance = Math.min(22, distance - 2);
+      }
+      
+      setCameraConfig({ fov, distance });
+    };
+    
+    updateCamera();
+    window.addEventListener('resize', updateCamera);
+    return () => window.removeEventListener('resize', updateCamera);
+  }, []);
 
   const toggleMode = () => {
     setMode((prev) => (prev === TreeMode.FORMED ? TreeMode.CHAOS : TreeMode.FORMED));
@@ -68,12 +114,17 @@ export default function App() {
       <ErrorBoundary>
         <Canvas
           dpr={[1, 2]}
-          camera={{ position: [0, 4, 20], fov: 45 }}
+          camera={{ position: [0, 4, cameraConfig.distance], fov: cameraConfig.fov }}
           gl={{ antialias: false, stencil: false, alpha: false }}
           shadows
         >
           <Suspense fallback={null}>
-            <Experience mode={mode} handPosition={handPosition} uploadedPhotos={uploadedPhotos} />
+            <Experience 
+              mode={mode} 
+              handPosition={handPosition} 
+              uploadedPhotos={uploadedPhotos}
+              indexFingerDetected={indexFingerDetected}
+            />
           </Suspense>
         </Canvas>
       </ErrorBoundary>
@@ -91,7 +142,12 @@ export default function App() {
       <AudioPlayer />
       
       {/* Gesture Control Module */}
-      <GestureController currentMode={mode} onModeChange={setMode} onHandPosition={handleHandPosition} />
+      <GestureController 
+        currentMode={mode} 
+        onModeChange={setMode} 
+        onHandPosition={handleHandPosition}
+        onIndexFingerDetected={setIndexFingerDetected}
+      />
     </div>
   );
 }

@@ -14,9 +14,10 @@ interface ExperienceProps {
   mode: TreeMode;
   handPosition: { x: number; y: number; detected: boolean };
   uploadedPhotos: string[];
+  indexFingerDetected?: boolean;
 }
 
-export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uploadedPhotos }) => {
+export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uploadedPhotos, indexFingerDetected = false }) => {
   const controlsRef = useRef<any>(null);
 
   // Update camera rotation based on hand position
@@ -100,7 +101,7 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
       <group position={[0, -6, 0]}>
         <Foliage mode={mode} count={12000} />
         <Ornaments mode={mode} count={600} />
-        <Polaroids mode={mode} uploadedPhotos={uploadedPhotos} />
+        <Polaroids mode={mode} uploadedPhotos={uploadedPhotos} indexFingerDetected={indexFingerDetected} />
         <TreeStar mode={mode} />
       </group>
       
