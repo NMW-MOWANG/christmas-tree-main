@@ -24,11 +24,16 @@ export const GestureController: React.FC<GestureControllerProps> = ({
   const openFrames = useRef(0);
   const closedFrames = useRef(0);
   const pointingFrames = useRef(0);
-  const CONFIDENCE_THRESHOLD = 5; // Number of consecutive frames to confirm gesture
+  const CONFIDENCE_THRESHOLD = 3; // 降低阈值，适应较低的检测帧率
 
   // 状态跟踪 refs
   const lastGestureState = useRef<'open' | 'pointing' | 'other'>('other'); // 跟踪上一个手势状态
   const hasTriggeredZoom = useRef(false); // 防止重复触发
+
+  // 帧率控制
+  const lastFrameTime = useRef(0);
+  const targetFPS = 15; // 降低到15FPS，提升流畅度
+  const frameInterval = 1000 / targetFPS; // 帧间隔时间（毫秒）
 
   useEffect(() => {
     let handLandmarker: HandLandmarker | null = null;
@@ -98,27 +103,34 @@ export const GestureController: React.FC<GestureControllerProps> = ({
     const predictWebcam = () => {
       if (!handLandmarker || !videoRef.current) return;
 
-      const startTimeMs = performance.now();
-      if (videoRef.current.videoWidth > 0) { // Ensure video is ready
-        const result = handLandmarker.detectForVideo(videoRef.current, startTimeMs);
+      const currentTimeMs = performance.now();
 
-        if (result.landmarks && result.landmarks.length > 0) {
-          const landmarks = result.landmarks[0];
-          detectGesture(landmarks);
-        } else {
-            setHandPos(null); // Clear hand position when no hand detected
-            if (onHandPosition) {
-              onHandPosition(0.5, 0.5, false); // No hand detected
-            }
-            // Reset counters if hand is lost?
-            // Better to keep them to prevent flickering if hand blips out for 1 frame
-            openFrames.current = Math.max(0, openFrames.current - 1);
-            closedFrames.current = Math.max(0, closedFrames.current - 1);
-            pointingFrames.current = Math.max(0, pointingFrames.current - 1);
+      // 帧率控制：只在达到目标帧间隔时进行检测
+      if (currentTimeMs - lastFrameTime.current >= frameInterval) {
+        lastFrameTime.current = currentTimeMs;
 
-            // 重置手势状态
-            lastGestureState.current = 'other';
-            hasTriggeredZoom.current = false;
+        const startTimeMs = currentTimeMs;
+        if (videoRef.current.videoWidth > 0) { // Ensure video is ready
+          const result = handLandmarker.detectForVideo(videoRef.current, startTimeMs);
+
+          if (result.landmarks && result.landmarks.length > 0) {
+            const landmarks = result.landmarks[0];
+            detectGesture(landmarks);
+          } else {
+              setHandPos(null); // Clear hand position when no hand detected
+              if (onHandPosition) {
+                onHandPosition(0.5, 0.5, false); // No hand detected
+              }
+              // Reset counters if hand is lost?
+              // Better to keep them to prevent flickering if hand blips out for 1 frame
+              openFrames.current = Math.max(0, openFrames.current - 1);
+              closedFrames.current = Math.max(0, closedFrames.current - 1);
+              pointingFrames.current = Math.max(0, pointingFrames.current - 1);
+
+              // 重置手势状态
+              lastGestureState.current = 'other';
+              hasTriggeredZoom.current = false;
+          }
         }
       }
 
@@ -174,8 +186,8 @@ export const GestureController: React.FC<GestureControllerProps> = ({
       const isPointing = extendedFingers < 5 && extendedFingers > 0; // 少于5个指头且非握拳
       const isOpenHand = extendedFingers >= 4; // 4个或以上指头为张开手掌
 
-      // 调试信息
-      if (pointingFrames.current % 30 === 0) { // 每30帧打印一次
+      // 调试信息（降低频率）
+      if (pointingFrames.current % 10 === 0) { // 每10帧打印一次（约每秒1-2次）
         console.log(`👋 手势检测: 伸出手指数=${extendedFingers}, 指向手势=${isPointing}, 张开手掌=${isOpenHand}, 上一个状态=${lastGestureState.current}`);
       }
 
