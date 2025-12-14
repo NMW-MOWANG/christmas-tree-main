@@ -104,14 +104,19 @@ const PolaroidItem: React.FC<{
       console.warn(`Polaroid ${index} will be hidden due to image loading failure`);
     };
     
-    // Primary URL with fallback options
+    // 只使用本地照片，不使用外部图片源
     const fallbackUrls = [
-      data.url,
-      'https://picsum.photos/400/400?random=' + index,
-      `${import.meta.env.BASE_URL || '/'}default-photos/photo${(index % 8) + 1}.${(index % 8) === 7 ? 'png' : 'jpg'}`
-    ].filter(url => url !== data.url);
-    
-    loadImage(data.url, fallbackUrls, 1);
+      `${import.meta.env.BASE_URL || '/'}default-photos/photo${(index % 10) + 1}.jpg`,
+      `${import.meta.env.BASE_URL || '/'}default-photos/photo${(index % 7) + 1}.jpg`,
+      // 新添加的照片作为备选
+      `${import.meta.env.BASE_URL || '/'}default-photos/photo11.jpg`,
+      `${import.meta.env.BASE_URL || '/'}default-photos/photo12.jpg`,
+      `${import.meta.env.BASE_URL || '/'}default-photos/photo13.jpg`
+    ];
+
+    // 如果有上传的照片，优先使用上传的照片
+    const primaryUrl = data.url.startsWith('blob:') || data.url.startsWith('/') ? data.url : fallbackUrls[0];
+    loadImage(primaryUrl, fallbackUrls, 1);
   }, [data.url, index]);
   
   // Random sway offset
@@ -137,7 +142,17 @@ const PolaroidItem: React.FC<{
     groupRef.current.position.lerp(targetPos, step);
     
     // 应用缩放
-    const targetScale = isZoomed ? zoomScale : 1;
+    let targetScale = 1; // 默认缩放
+
+    if (isZoomed) {
+      // ZOOM 状态的缩放由 zoomScale 控制
+      targetScale = zoomScale;
+    } else if (isFormed) {
+      // FORMED 状态使用 0.6 缩放
+      targetScale = 0.6;
+    }
+    // CHAOS 状态使用默认缩放 1.0
+
     const currentScale = groupRef.current.scale.x;
     groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), delta * 5);
 
@@ -259,12 +274,16 @@ const PolaroidItem: React.FC<{
 
 export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, indexFingerDetected = false }) => {
   const [zoomedIndex, setZoomedIndex] = useState<number | null>(null);
+  const [currentZoomIndex, setCurrentZoomIndex] = useState<number>(0); // 依次展示的索引
+  const previousIndexFingerState = useRef<boolean>(false); // 跟踪上一帧的手势状态
+  const lastGestureTime = useRef<number>(0); // 上次手势变化的时间戳
+  const gestureDebounceTime = 300; // 防抖时间（毫秒）
   const photoDataRef = useRef<PhotoData[]>([]);
   // Static default photos paths - using local images with deployment-safe URLs
   const defaultPhotos = useMemo(() => {
-    // Use relative paths that work in both development and production
+    // 只使用本地默认照片
     const basePath = import.meta.env.BASE_URL || '/';
-    return [
+    const photos = [
       `${basePath}default-photos/photo1.jpg`,
       `${basePath}default-photos/photo2.jpg`,
       `${basePath}default-photos/photo3.jpg`,
@@ -272,19 +291,42 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, inde
       `${basePath}default-photos/photo5.jpg`,
       `${basePath}default-photos/photo6.jpg`,
       `${basePath}default-photos/photo7.jpg`,
-      `${basePath}default-photos/photo8.png`,
+      `${basePath}default-photos/photo9.jpg`,
+      `${basePath}default-photos/photo10.jpg`,
+      // 新添加的照片 photo11-photo18
+      `${basePath}default-photos/photo11.jpg`,
+      `${basePath}default-photos/photo12.jpg`,
+      `${basePath}default-photos/photo13.jpg`,
+      `${basePath}default-photos/photo14.jpg`,
+      `${basePath}default-photos/photo15.jpg`,
+      `${basePath}default-photos/photo16.jpg`,
+      `${basePath}default-photos/photo17.jpg`,
+      `${basePath}default-photos/photo18.jpg`,
     ].filter(Boolean);
+
+    // 检查是否有重复项
+    const uniquePhotos = [...new Set(photos)];
+    if (photos.length !== uniquePhotos.length) {
+      console.warn(`⚠️ 发现重复照片！原始数量: ${photos.length}, 去重后: ${uniquePhotos.length}`);
+      console.log(`重复的照片:`, photos.filter((item, index) => photos.indexOf(item) !== index));
+    }
+
+    return uniquePhotos;
   }, []);
 
   const photoData = useMemo(() => {
     // Use uploaded photos if available, otherwise use default photos
     const photosToUse = uploadedPhotos.length > 0 ? uploadedPhotos : defaultPhotos;
-    
+
     if (photosToUse.length === 0) {
       return [];
     }
 
     const data: PhotoData[] = [];
+
+    // 调试：输出实际照片数量
+    console.log(`📷 总照片数量: ${photosToUse.length}`);
+    console.log(`📸 照片列表:`, photosToUse);
     const height = 9; // Range of height on tree
     const maxRadius = 5.0; // Slightly outside the foliage radius (which is approx 5 at bottom)
     
@@ -308,60 +350,82 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, inde
         r * Math.sin(theta)
       );
 
-      // 2. Chaos Position - Spread out within screen bounds, facing camera
-      // 确保拍立得在屏幕范围内且面向相机
-      // 使用视口坐标计算，确保不超出屏幕
+      // 2. Chaos Position - 爱心形状分布在空间中心
+      // 使用爱心形状的数学公式，让拍立得在混沌状态下形成爱心
       const aspect = window.innerWidth / window.innerHeight;
       const fov = 45; // 与App.tsx中的默认FOV一致
       const cameraZ = 20; // 相机Z位置
 
-      // 计算屏幕边界（在相机前方的平面上）
-      const chaosPlaneDistance = cameraZ - 4; // 混乱模式拍立得平面距离相机的距离
-      const planeHeight = 2 * Math.tan((fov * Math.PI / 180) / 2) * chaosPlaneDistance;
-      const planeWidth = planeHeight * aspect;
+      // 计算混沌状态下的平面参数（在空间中心附近）
+      const chaosPlaneDistance = 8; // 混沌模式拍立得距离中心的距离
+      const chaosPlaneHeight = 2 * Math.tan((fov * Math.PI / 180) / 2) * chaosPlaneDistance;
+      const chaosPlaneWidth = chaosPlaneHeight * aspect;
 
-      // 限制散开范围在屏幕内（留出边距）
-      const margin = 0.3; // 30%边距
-      const maxX = planeWidth * (1 - margin) / 2;
-      const maxY = planeHeight * (1 - margin) / 2;
+      // 爱心形状参数 - 调整为完整展示尺寸（1.0倍）
+      const chaosHeartScale = Math.min(chaosPlaneWidth, chaosPlaneHeight) * 0.6; // 调整基础尺寸以适应屏幕
 
-      // 在屏幕范围内均匀分布
-      const angle = (i / count) * Math.PI * 2;
-      const radius = Math.min(maxX, maxY) * 0.8; // 使用较小的维度确保不超出
-      const x = Math.cos(angle) * radius * (Math.random() * 0.5 + 0.75); // 添加一些随机性
-      const chaosY = Math.sin(angle) * radius * (Math.random() * 0.5 + 0.75);
-      const z = cameraZ - 4; // 固定Z位置，确保面向相机
+      // 根据照片数量动态调整爱心大小 - 使用更保守的缩放以确保完整展示
+      const chaosScaleFactor = Math.min(1.8, Math.max(1.2, Math.sqrt(count / 8))); // 以8张照片为基准，更小的缩放范围
+      const chaosAdjustedHeartScale = chaosHeartScale * chaosScaleFactor;
 
-      const chaosPos = new THREE.Vector3(x, chaosY + 5, z); // y+5 补偿场景组偏移
+      let chaosX, chaosY;
 
-      // 3. Zoom Position - 随机分散在屏幕内，但更靠近相机
-      const zoomPlaneDistance = cameraZ - 8; // 放大时更靠近相机
-      const zoomPlaneHeight = 2 * Math.tan((fov * Math.PI / 180) / 2) * zoomPlaneDistance;
-      const zoomPlaneWidth = zoomPlaneHeight * aspect;
+      // 仅绘制爱心轮廓 - 所有照片都在轮廓线上
+      // 基础角度，确保沿着轮廓均匀分布
+      const t = (i / count) * Math.PI * 2; // 参数 t 从 0 到 2π
 
-      // 放大时的可用范围（留出更多边距以确保完全可见）
-      const zoomMargin = 0.2; // 20%边距
-      const zoomMaxX = zoomPlaneWidth * (1 - zoomMargin) / 2;
-      const zoomMaxY = zoomPlaneHeight * (1 - zoomMargin) / 2;
+      // 计算爱心轮廓点
+      const heartX = 16 * Math.pow(Math.sin(t), 3);
+      const heartY = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
 
-      // 为每个拍立得生成随机放大位置
-      const zoomX = (Math.random() - 0.5) * 2 * zoomMaxX;
-      const zoomY = (Math.random() - 0.5) * 2 * zoomMaxY;
-      const zoomZ = cameraZ - 8; // 更靠近相机的固定Z位置
+      // 轻微的分散因子避免重叠，但保持轮廓形状
+      const spreadFactor = 0.95 + Math.random() * 0.1; // 0.95到1.05，非常小的分散
+
+      // 计算最终位置，保持轮廓清晰
+      chaosX = (heartX / 16) * chaosAdjustedHeartScale * spreadFactor;
+      chaosY = (heartY / 16) * chaosAdjustedHeartScale * 1.15 * spreadFactor; // 保持Y轴拉伸
+
+      // 添加极微小的随机偏移避免完全重叠
+      chaosX += (Math.random() - 0.5) * 0.1;
+      chaosY += (Math.random() - 0.5) * 0.05;
+
+      // 调高Y坐标确保在屏幕中心显示
+      chaosY += 5; // 向上偏移5个单位，使爱心轮廓在屏幕中心
+
+      const chaosZ = 0; // 固定Z位置，在空间中心附近
+
+      const chaosPos = new THREE.Vector3(chaosX, chaosY, chaosZ); // 调整后的位置
+
+      // 3. Zoom Position - 展示位置（屏幕中央附近）
+      // 为依次展示模式设计，确保照片在屏幕合适位置
+      const zoomZ = cameraZ - 6; // 稍微靠近相机
+
+      // 使用固定的展示位置，避免过高或过低
+      const zoomX = 0; // 水平居中
+      const zoomY = 2; // 适中的垂直位置，不会超出屏幕
+
+      // 添加微小的随机偏移，让每张照片有细微差异
+      const microOffset = 0.2; // 微小偏移量
+
+      // 添加基于索引的微小偏移，让每次展示有细微位置变化
+      const finalZoomX = zoomX + (Math.random() - 0.5) * microOffset;
+      const finalZoomY = zoomY + (Math.random() - 0.5) * microOffset;
 
       // 根据位置计算距离相机的距离，用于自适应缩放
-      const distanceToCamera = Math.sqrt(zoomX * zoomX + zoomY * zoomY + zoomZ * zoomZ);
+      const distanceToCamera = Math.sqrt(finalZoomX * finalZoomX + finalZoomY * finalZoomY + zoomZ * zoomZ);
       const minDistance = Math.abs(zoomZ); // 最小距离是正前方的距离
-      const maxDistance = Math.sqrt(zoomMaxX * zoomMaxX + zoomMaxY * zoomMaxY + zoomZ * zoomZ);
-      // 归一化距离因子：距离越近，因子越大 (0.2 到 1.0)
-      const distanceFactor = 1 - ((distanceToCamera - minDistance) / (maxDistance - minDistance));
+
+      // 简化距离因子计算
+      const distanceFactor = Math.max(0.5, Math.min(1.0, 1 - (distanceToCamera - minDistance) / 10));
       const clampedDistanceFactor = Math.max(0.2, Math.min(1.0, distanceFactor)); // 确保在合理范围内
 
-      const zoomPos = new THREE.Vector3(zoomX, zoomY + 5, zoomZ); // y+5 补偿场景组偏移
+      const zoomPos = new THREE.Vector3(finalZoomX, finalZoomY + 5, zoomZ); // y+5 补偿场景组偏移
 
       // 调试信息
       if (i === 0) {
-        console.log(`Polaroid ${i}: zoomPos(${zoomX.toFixed(2)}, ${zoomY.toFixed(2)}, ${zoomZ}), distanceFactor: ${clampedDistanceFactor.toFixed(2)}`);
+        console.log(`🎄 ZOOM 分布模式: 屏幕中央依次展示`);
+        console.log(`📷 照片数量: ${count}, 展示位置: 屏幕中央`);
+        console.log(`💖 Polaroid ${i}: 展示位置(${finalZoomX.toFixed(2)}, ${finalZoomY.toFixed(2)}, ${zoomZ}), 距离因子: ${clampedDistanceFactor.toFixed(2)}`);
       }
 
       data.push({
@@ -378,25 +442,41 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, inde
     return data;
   }, [uploadedPhotos, defaultPhotos]);
 
-  // 检测食指手势，放大所有拍立得并分散
+  // 检测食指手势，依次展示拍立得
   useEffect(() => {
-    if (indexFingerDetected && photoDataRef.current.length > 0) {
-      // 放大所有拍立得，使用一个特殊值表示全部放大
-      setZoomedIndex(-1); // -1 表示所有拍立得都放大
+    const photoCount = photoDataRef.current.length;
+    const currentTime = Date.now();
+
+    if (indexFingerDetected && photoCount > 0 && mode === TreeMode.CHAOS) {
+      // 检测手势从 false 到 true 的上升沿（刚伸出食指）
+      if (!previousIndexFingerState.current && (currentTime - lastGestureTime.current > gestureDebounceTime)) {
+        // 依次切换到下一张照片
+        const nextIndex = (currentZoomIndex + 1) % photoCount;
+        setCurrentZoomIndex(nextIndex);
+        setZoomedIndex(nextIndex);
+        lastGestureTime.current = currentTime; // 更新时间戳
+
+        console.log(`👆 食指伸出，切换到第 ${nextIndex + 1} 张照片（总共 ${photoCount} 张）`);
+      }
     } else {
       setZoomedIndex(null);
     }
-  }, [indexFingerDetected, mode]);
+
+    // 更新上一帧的手势状态
+    previousIndexFingerState.current = indexFingerDetected;
+  }, [indexFingerDetected, mode, currentZoomIndex]);
+
+  // 输出渲染信息（只在照片数量变化时输出）
+  useEffect(() => {
+    console.log(`🎨 正在渲染 ${photoData.length} 个拍立得`);
+  }, [photoData.length]);
 
   return (
     <group>
       {photoData.map((data, i) => {
-        const isZoomed = zoomedIndex === -1; // 所有拍立得同时放大
-        // 使用距离因子实现自适应缩放
-        // 距离相机越近（distanceFactor越大），放大倍数越大
-        const baseZoomScale = 1.5; // 基础放大倍数
-        const maxZoomScale = 3.5; // 最大放大倍数
-        const zoomScale = isZoomed ? baseZoomScale + data.distanceFactor * (maxZoomScale - baseZoomScale) : 1;
+        const isZoomed = zoomedIndex === i; // 只有特定索引的拍立得放大
+        // ZOOM 状态下，放大的照片尺寸是 CHAOS 状态下正常尺寸的 1.5 倍
+        const zoomScale = isZoomed ? 1.5 : 1;
 
         return (
           <PolaroidItem

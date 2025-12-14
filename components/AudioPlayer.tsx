@@ -34,20 +34,14 @@ export const AudioPlayer: React.FC = () => {
     fetchManifest();
   }, []);
 
-  // Play current track and move to next on end
+  // Play current track with loop enabled
   useEffect(() => {
     if (playlist.length === 0) return;
 
     const audio = new Audio(playlist[index % playlist.length]);
-    audio.loop = false;
+    audio.loop = true; // 启用循环播放
     audio.volume = 0.4;
     audioRef.current = audio;
-
-    const handleEnded = () => {
-      setIndex((prev) => (prev + 1) % playlist.length);
-    };
-
-    audio.addEventListener('ended', handleEnded);
 
     audio
       .play()
@@ -55,7 +49,6 @@ export const AudioPlayer: React.FC = () => {
 
     return () => {
       audio.pause();
-      audio.removeEventListener('ended', handleEnded);
     };
   }, [playlist, index]);
 
