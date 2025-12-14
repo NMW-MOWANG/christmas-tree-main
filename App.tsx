@@ -5,7 +5,7 @@ import { Loader } from '@react-three/drei';
 import { Experience } from './components/Experience';
 import { UIOverlay } from './components/UIOverlay';
 import { GestureController } from './components/GestureController';
-import { AudioPlayer } from './components/AudioPlayer';
+import { AudioControl } from './components/AudioControl';
 import { TreeMode } from './types';
 
 // Simple Error Boundary to catch 3D resource loading errors (like textures)
@@ -138,8 +138,8 @@ export default function App() {
       
       <UIOverlay mode={mode} onToggle={toggleMode} onPhotosUpload={handlePhotosUpload} hasPhotos={uploadedPhotos.length > 0} />
       
-      {/* 背景音乐循环播放 */}
-      <AudioPlayer />
+      {/* 背景音乐控制 */}
+      <AudioControl />
       
       {/* Gesture Control Module */}
       <GestureController 
