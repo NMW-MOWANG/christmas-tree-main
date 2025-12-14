@@ -241,7 +241,7 @@ export const GestureController: React.FC<GestureControllerProps> = ({
             }
         }
 
-      } else if (extendedFingers <= 1 && !onlyIndexFinger) {
+      } else if (extendedFingers <= 1 && !isPointing) {
         // CLOSED FIST -> RESTORE (FORMED)
         closedFrames.current++;
         openFrames.current = 0;
@@ -252,7 +252,7 @@ export const GestureController: React.FC<GestureControllerProps> = ({
                 onModeChange(TreeMode.FORMED);
             }
         }
-      } else if (!onlyIndexFinger) {
+      } else if (!isPointing) {
         // Ambiguous
         openFrames.current = 0;
         closedFrames.current = 0;
