@@ -24,10 +24,8 @@ interface ExperienceProps {
 export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uploadedPhotos, indexFingerDetected = false, onTreeClick, onPolaroidClick, zoomedPolaroid }) => {
   const controlsRef = useRef<any>(null);
   const lastClickTime = useRef<number>(0);
-  const autoRotateRef = useRef<number>(0); // 自旋转角度
   const [isUserInteracting, setIsUserInteracting] = useState(false); // 用户是否正在交互
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout>(); // 自动旋转延迟定时器
-  const savedAutoRotateAngle = useRef<number>(0); // 保存用户交互前的旋转角度
 
   // 处理圣诞树双击
   const handleTreeClick = (event: any) => {
@@ -93,26 +91,8 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
         controls.object.position.set(x, y, z);
         controls.target.set(0, targetY, 0);
         controls.update();
-      } else if (!isUserInteracting) {
-        // 自动旋转模式：仅在无用户交互时
-        autoRotateRef.current += delta * 0.1; // 每秒旋转约0.1弧度
-
-        const radius = controls.getDistance();
-        const targetY = 0; // Tree center height
-
-        // 使用用户当前的极角，而不是固定角度
-        const currentPolarAngle = controls.getPolarAngle();
-        const azimuthAngle = autoRotateRef.current;
-
-        const x = radius * Math.sin(currentPolarAngle) * Math.sin(azimuthAngle);
-        const y = targetY + radius * Math.cos(currentPolarAngle);
-        const z = radius * Math.sin(currentPolarAngle) * Math.cos(azimuthAngle);
-
-        controls.object.position.set(x, y, z);
-        controls.target.set(0, targetY, 0);
-        controls.update();
       }
-      // 如果用户正在交互，让 OrbitControls 处理旋转
+      // 其他情况让 OrbitControls 处理，包括自动旋转和用户交互
     }
   });
 
@@ -138,15 +118,14 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
         dampingFactor={0.05}
         enabled={true}
         enableRotate={!handPosition.detected} // 手势控制时禁用手动旋转
-        autoRotate={false}                     // 禁用内置自动旋转，使用自定义逻辑
+        autoRotate={!handPosition.detected && !isUserInteracting}  // 智能自动旋转
+        autoRotateSpeed={0.5}                  // 缓慢旋转速度
         initialPolarAngle={Math.PI / 3}        // 初始俯视角度（60度）
 
         // 用户交互事件处理
         onStart={() => {
-          if (!handPosition.detected && controlsRef.current) {
+          if (!handPosition.detected) {
             setIsUserInteracting(true);
-            // 保存当前旋转角度
-            savedAutoRotateAngle.current = controlsRef.current.getAzimuthalAngle();
             // 清除延迟恢复自动旋转的定时器
             if (autoRotateTimeoutRef.current) {
               clearTimeout(autoRotateTimeoutRef.current);
@@ -157,10 +136,6 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
           if (!handPosition.detected) {
             // 延迟3秒后恢复自动旋转
             autoRotateTimeoutRef.current = setTimeout(() => {
-              if (controlsRef.current) {
-                // 从保存的角度开始继续旋转
-                autoRotateRef.current = savedAutoRotateAngle.current;
-              }
               setIsUserInteracting(false);
             }, 3000);
           }
