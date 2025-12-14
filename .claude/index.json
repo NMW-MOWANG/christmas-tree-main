@@ -1,0 +1,74 @@
+{
+  "lastScan": "2025-01-14T12:00:00.000Z",
+  "version": "1.0.0",
+  "summary": {
+    "totalFiles": 32,
+    "scannedFiles": 32,
+    "coverage": "100%",
+    "modules": [
+      {
+        "path": "components",
+        "type": "React Components",
+        "entryFiles": ["App.tsx", "index.tsx"],
+        "interfaces": ["Experience.tsx", "UIOverlay.tsx", "GestureController.tsx"],
+        "tests": [],
+        "config": [],
+        "coverage": "100%"
+      },
+      {
+        "path": "src",
+        "type": "Source Utilities",
+        "entryFiles": [],
+        "interfaces": ["api/scanPhotos.ts", "utils/preloadPhotos.ts"],
+        "tests": [],
+        "config": [],
+        "coverage": "100%"
+      },
+      {
+        "path": "scripts",
+        "type": "Build Scripts",
+        "entryFiles": ["download-model.js", "generatePhotoManifest.js"],
+        "interfaces": [],
+        "tests": [],
+        "config": [],
+        "coverage": "100%"
+      },
+      {
+        "path": "public",
+        "type": "Static Assets",
+        "entryFiles": [],
+        "interfaces": [],
+        "tests": [],
+        "config": ["default-photos/manifest.json", "audio/manifest.json"],
+        "coverage": "100%"
+      }
+    ],
+    "ignoredDirectories": ["node_modules", "dist", ".git"],
+    "truncated": false,
+    "gaps": []
+  },
+  "architecture": {
+    "coreFramework": "React 19 + TypeScript + React Three Fiber",
+    "stateManagement": "TreeMode enum with dual position system",
+    "rendering": "WebGL with Three.js, optimized with InstancedMesh and ShaderMaterials",
+    "gestureControl": "MediaPipe Hand Landmarker",
+    "postprocessing": "Bloom, Vignette, Noise effects",
+    "audio": "HTML5 Audio with manifest system",
+    "assetManagement": "Local photos with fallback system"
+  },
+  "performance": {
+    "optimizations": [
+      "InstancedMesh for ornaments",
+      "ShaderMaterial for foliage particles",
+      "LOD system for camera",
+      "Lazy loading for textures",
+      "Frame rate limiting for gesture detection"
+    ]
+  },
+  "nextSteps": [
+    "Consider adding unit tests for gesture detection logic",
+    "Implement error boundary for MediaPipe loading",
+    "Add accessibility features for keyboard controls",
+    "Optimize photo loading with progressive enhancement"
+  ]
+}
