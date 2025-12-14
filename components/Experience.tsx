@@ -27,6 +27,7 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
   const autoRotateRef = useRef<number>(0); // 自旋转角度
   const [isUserInteracting, setIsUserInteracting] = useState(false); // 用户是否正在交互
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout>(); // 自动旋转延迟定时器
+  const savedAutoRotateAngle = useRef<number>(0); // 保存用户交互前的旋转角度
 
   // 处理圣诞树双击
   const handleTreeClick = (event: any) => {
@@ -99,13 +100,13 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
         const radius = controls.getDistance();
         const targetY = 0; // Tree center height
 
-        // 俯视角度：polar angle = PI/3 (60度，30度俯视)
-        const polarAngle = Math.PI / 3;
+        // 使用用户当前的极角，而不是固定角度
+        const currentPolarAngle = controls.getPolarAngle();
         const azimuthAngle = autoRotateRef.current;
 
-        const x = radius * Math.sin(polarAngle) * Math.sin(azimuthAngle);
-        const y = targetY + radius * Math.cos(polarAngle);
-        const z = radius * Math.sin(polarAngle) * Math.cos(azimuthAngle);
+        const x = radius * Math.sin(currentPolarAngle) * Math.sin(azimuthAngle);
+        const y = targetY + radius * Math.cos(currentPolarAngle);
+        const z = radius * Math.sin(currentPolarAngle) * Math.cos(azimuthAngle);
 
         controls.object.position.set(x, y, z);
         controls.target.set(0, targetY, 0);
@@ -142,8 +143,10 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
 
         // 用户交互事件处理
         onStart={() => {
-          if (!handPosition.detected) {
+          if (!handPosition.detected && controlsRef.current) {
             setIsUserInteracting(true);
+            // 保存当前旋转角度
+            savedAutoRotateAngle.current = controlsRef.current.getAzimuthalAngle();
             // 清除延迟恢复自动旋转的定时器
             if (autoRotateTimeoutRef.current) {
               clearTimeout(autoRotateTimeoutRef.current);
@@ -154,6 +157,10 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
           if (!handPosition.detected) {
             // 延迟3秒后恢复自动旋转
             autoRotateTimeoutRef.current = setTimeout(() => {
+              if (controlsRef.current) {
+                // 从保存的角度开始继续旋转
+                autoRotateRef.current = savedAutoRotateAngle.current;
+              }
               setIsUserInteracting(false);
             }, 3000);
           }
