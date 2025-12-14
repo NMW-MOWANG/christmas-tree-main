@@ -23,8 +23,12 @@ export const GestureController: React.FC<GestureControllerProps> = ({
   // Debounce logic refs
   const openFrames = useRef(0);
   const closedFrames = useRef(0);
-  const indexFingerFrames = useRef(0);
+  const pointingFrames = useRef(0);
   const CONFIDENCE_THRESHOLD = 5; // Number of consecutive frames to confirm gesture
+
+  // 状态跟踪 refs
+  const lastGestureState = useRef<'open' | 'pointing' | 'other'>('other'); // 跟踪上一个手势状态
+  const hasTriggeredZoom = useRef(false); // 防止重复触发
 
   useEffect(() => {
     let handLandmarker: HandLandmarker | null = null;
@@ -110,7 +114,11 @@ export const GestureController: React.FC<GestureControllerProps> = ({
             // Better to keep them to prevent flickering if hand blips out for 1 frame
             openFrames.current = Math.max(0, openFrames.current - 1);
             closedFrames.current = Math.max(0, closedFrames.current - 1);
-            indexFingerFrames.current = Math.max(0, indexFingerFrames.current - 1);
+            pointingFrames.current = Math.max(0, pointingFrames.current - 1);
+
+            // 重置手势状态
+            lastGestureState.current = 'other';
+            hasTriggeredZoom.current = false;
         }
       }
 
@@ -162,42 +170,66 @@ export const GestureController: React.FC<GestureControllerProps> = ({
       const distThumbBase = Math.hypot(thumbBase.x - wrist.x, thumbBase.y - wrist.y);
       if (distThumbTip > distThumbBase * 1.2) extendedFingers++;
 
-      // 检测食指单独伸出
-      const indexTip = landmarks[8];
-      const indexBase = landmarks[5];
-      const indexExtended = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y) >
-                            Math.hypot(indexBase.x - wrist.x, indexBase.y - wrist.y) * 1.5;
-
-      // 检查其他手指是否收起（只有食指伸出）
-      const otherFingersExtended = extendedFingers - (indexExtended ? 1 : 0);
-      const onlyIndexFinger = indexExtended && otherFingersExtended === 0;
+      // 新的手势检测逻辑
+      const isPointing = extendedFingers < 5 && extendedFingers > 0; // 少于5个指头且非握拳
+      const isOpenHand = extendedFingers >= 4; // 4个或以上指头为张开手掌
 
       // 调试信息
-      if (indexFingerFrames.current % 30 === 0) { // 每30帧打印一次
-        console.log(`👋 手势检测: 伸出手指数=${extendedFingers}, 食指单独伸出=${onlyIndexFinger}, 食指连续帧数=${indexFingerFrames.current}`);
+      if (pointingFrames.current % 30 === 0) { // 每30帧打印一次
+        console.log(`👋 手势检测: 伸出手指数=${extendedFingers}, 指向手势=${isPointing}, 张开手掌=${isOpenHand}, 上一个状态=${lastGestureState.current}`);
       }
 
-      if (onlyIndexFinger) {
-        indexFingerFrames.current++;
+      // 检测手势状态变化
+      let currentGestureState: 'open' | 'pointing' | 'other';
+      if (isOpenHand) {
+        currentGestureState = 'open';
+      } else if (isPointing) {
+        currentGestureState = 'pointing';
+      } else {
+        currentGestureState = 'other';
+      }
+
+      // 处理指向手势（用于拍立得放大）
+      if (isPointing) {
+        pointingFrames.current++;
         openFrames.current = 0;
         closedFrames.current = 0;
 
-        if (indexFingerFrames.current > CONFIDENCE_THRESHOLD && onIndexFingerDetected) {
-          console.log(`👆 食指手势确认！触发拍立得放大`);
+        // 检测从张开手掌切换到指向手势的瞬间
+        if (lastGestureState.current === 'open' && !hasTriggeredZoom.current) {
+          if (pointingFrames.current >= 2) { // 短暂确认即可
+            console.log(`🎯 从张开手掌切换到指向手势！触发拍立得放大`);
+            if (onIndexFingerDetected) {
+              onIndexFingerDetected(true);
+            }
+            hasTriggeredZoom.current = true; // 防止重复触发
+          }
+        }
+
+        if (pointingFrames.current > CONFIDENCE_THRESHOLD && onIndexFingerDetected && !hasTriggeredZoom.current) {
+          console.log(`👆 指向手势确认！`);
           onIndexFingerDetected(true);
         }
       } else {
-        if (indexFingerFrames.current > CONFIDENCE_THRESHOLD) {
-          console.log(`✋ 取消食指手势`);
+        if (pointingFrames.current > CONFIDENCE_THRESHOLD) {
+          console.log(`✋ 取消指向手势`);
         }
-        indexFingerFrames.current = 0;
+        pointingFrames.current = 0;
         if (onIndexFingerDetected) {
           onIndexFingerDetected(false);
         }
+
+        // 重置触发标志，当下次从张开切换到指向时可以再次触发
+        if (currentGestureState === 'open') {
+          hasTriggeredZoom.current = false;
+        }
       }
+
+      // 更新手势状态
+      lastGestureState.current = currentGestureState;
       
       // DECISION
-      if (extendedFingers >= 4 && !onlyIndexFinger) {
+      if (extendedFingers >= 4 && !isPointing) {
         // OPEN HAND -> UNLEASH (CHAOS)
         openFrames.current++;
         closedFrames.current = 0;
