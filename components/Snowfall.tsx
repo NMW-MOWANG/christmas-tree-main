@@ -9,9 +9,53 @@ interface SnowflakeProps {
   size: number;
 }
 
+// 创建真实六角雪花形状
+const createSnowflakeGeometry = (size: number) => {
+  const shape = new THREE.Shape();
+
+  // 创建六角雪花的基本形状
+  const arms = 6;
+  const armLength = size;
+
+  for (let i = 0; i < arms; i++) {
+    const angle = (i / arms) * Math.PI * 2;
+    const x = Math.cos(angle) * armLength;
+    const y = Math.sin(angle) * armLength;
+
+    if (i === 0) {
+      shape.moveTo(x, y);
+    } else {
+      shape.lineTo(x, y);
+    }
+
+    // 添加分支
+    const branchAngle1 = angle + Math.PI / 6;
+    const branchAngle2 = angle - Math.PI / 6;
+    const branchLength = armLength * 0.4;
+
+    shape.lineTo(
+      x + Math.cos(branchAngle1) * branchLength,
+      y + Math.sin(branchAngle1) * branchLength
+    );
+    shape.lineTo(x, y);
+    shape.lineTo(
+      x + Math.cos(branchAngle2) * branchLength,
+      y + Math.sin(branchAngle2) * branchLength
+    );
+    shape.lineTo(x, y);
+  }
+
+  shape.closePath();
+
+  return new THREE.ShapeGeometry(shape);
+};
+
 const Snowflake: React.FC<SnowflakeProps> = ({ position, speed, swayAmount, size }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const timeRef = useRef(Math.random() * Math.PI * 2); // 随机初始时间
+
+  // 创建雪花几何体（使用 useMemo 优化性能）
+  const snowflakeGeometry = useMemo(() => createSnowflakeGeometry(size), [size]);
 
   useFrame((state, delta) => {
     if (meshRef.current) {
@@ -23,8 +67,8 @@ const Snowflake: React.FC<SnowflakeProps> = ({ position, speed, swayAmount, size
       const sway = Math.sin(timeRef.current * 2) * swayAmount;
       meshRef.current.position.x += sway * delta;
 
-      // 轻微旋转
-      meshRef.current.rotation.z += delta * 0.5;
+      // 轻微旋转（更慢的旋转速度）
+      meshRef.current.rotation.z += delta * 0.2;
 
       // 重置位置（循环下落）
       if (meshRef.current.position.y < -15) {
@@ -36,16 +80,14 @@ const Snowflake: React.FC<SnowflakeProps> = ({ position, speed, swayAmount, size
   });
 
   return (
-    <mesh ref={meshRef} position={position}>
-      <sphereGeometry args={[size, 8, 6]} />
+    <mesh ref={meshRef} position={position} geometry={snowflakeGeometry}>
       <meshStandardMaterial
         color="#ffffff"
-        emissive="#ffffff"
-        emissiveIntensity={0.8} // 强发光，模拟雪花泛光
         transparent
-        opacity={0.9}
-        roughness={0.1}
-        metalness={0.2}
+        opacity={0.85}
+        roughness={0.8}  // 增加粗糙度，更像真实雪花
+        metalness={0.0}  // 去除金属感
+        side={THREE.DoubleSide}  // 双面渲染
       />
     </mesh>
   );
@@ -54,7 +96,7 @@ const Snowflake: React.FC<SnowflakeProps> = ({ position, speed, swayAmount, size
 export const Snowfall: React.FC = () => {
   // 生成雪花位置和属性
   const snowflakes = useMemo(() => {
-    const count = 150; // 适中的雪花数量，保证性能
+    const count = 120; // 稍微减少数量，因为复杂形状需要更多性能
     const flakes: Array<{
       position: [number, number, number];
       speed: number;
@@ -71,7 +113,7 @@ export const Snowfall: React.FC = () => {
         ],
         speed: 0.02 + Math.random() * 0.03, // 0.02-0.05 的下落速度
         swayAmount: 0.5 + Math.random() * 1,  // 0.5-1.5 的摇摆幅度
-        size: 0.05 + Math.random() * 0.15,     // 0.05-0.2 的雪花大小（适当大一些）
+        size: 0.1 + Math.random() * 0.15,      // 0.1-0.25 的雪花大小（稍大一些以显示细节）
       });
     }
     return flakes;

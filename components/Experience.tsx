@@ -174,14 +174,14 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
 
       <EffectComposer enableNormalPass={false}>
         <Bloom
-          luminanceThreshold={0.4}  // 降低阈值，让更多物体发光（包括雪花）
+          luminanceThreshold={0.8}  // 提高阈值，只让高发光物体（如装饰物）发光，雪花不发光
           mipmapBlur
-          intensity={2.0}           // 增加强度，增强泛光效果
-          radius={0.8}              // 增加半径，让泛光更柔和
-          levels={9}                // 增加级别，提高泛光质量
+          intensity={1.5}           // 适度强度
+          radius={0.6}              // 适中的泛光半径
+          levels={6}                // 适中的泛光质量
         />
-        <Vignette eskil={false} offset={0.1} darkness={0.6} />  // 减少暗角，让雪花更明显
-        <Noise opacity={0.015} blendFunction={BlendFunction.OVERLAY} /> // 减少噪声，提升清晰度
+        <Vignette eskil={false} offset={0.1} darkness={0.7} />  // 保持适度暗角
+        <Noise opacity={0.02} blendFunction={BlendFunction.OVERLAY} /> // 保持适度噪声
       </EffectComposer>
     </>
   );
