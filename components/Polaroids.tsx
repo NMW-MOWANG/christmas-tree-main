@@ -59,7 +59,8 @@ const PolaroidItem: React.FC<{
   const handleClick = (event: any) => {
     event.stopPropagation();
     if (mode === TreeMode.CHAOS && onClick) {
-      console.log(`📸 点击了拍立得 ${index}，进入放大状态`);
+      console.log(`📸 点击了拍立得 ${index}，切换放大状态`);
+      // 如果当前已经有放大的照片且是这张照片，则取消放大；否则放大这张照片
       onClick(index);
     }
   };
@@ -475,18 +476,20 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, inde
         // 依次切换到下一张照片
         const nextIndex = (currentZoomIndex + 1) % photoCount;
         setCurrentZoomIndex(nextIndex);
-        setZoomedIndex(nextIndex);
+        // 通过回调通知父组件切换放大状态
+        onPolaroidClick?.(nextIndex);
         lastGestureTime.current = currentTime; // 更新时间戳
 
         console.log(`👆 食指伸出，切换到第 ${nextIndex + 1} 张照片（总共 ${photoCount} 张）`);
       }
-    } else {
-      setZoomedIndex(null);
+    } else if (!indexFingerDetected && zoomedPolaroid !== null) {
+      // 手指收回时清除放大状态
+      onPolaroidClick?.(null);
     }
 
     // 更新上一帧的手势状态
     previousIndexFingerState.current = indexFingerDetected;
-  }, [indexFingerDetected, mode, currentZoomIndex]);
+  }, [indexFingerDetected, mode, currentZoomIndex, zoomedPolaroid, onPolaroidClick]);
 
   // 输出渲染信息（只在照片数量变化时输出）
   useEffect(() => {

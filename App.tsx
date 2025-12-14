@@ -118,9 +118,15 @@ export default function App() {
   };
 
   // 处理点击拍立得放大
-  const handlePolaroidClick = (photoIndex: number) => {
+  const handlePolaroidClick = (photoIndex: number | null) => {
     if (mode === TreeMode.CHAOS) {
-      setZoomedPolaroid(zoomedPolaroid === photoIndex ? null : photoIndex);
+      if (photoIndex === null) {
+        // 手势控制收回手指，清除放大状态
+        setZoomedPolaroid(null);
+      } else {
+        // 点击拍立得，切换放大状态
+        setZoomedPolaroid(zoomedPolaroid === photoIndex ? null : photoIndex);
+      }
     }
   };
 
