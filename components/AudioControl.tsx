@@ -182,7 +182,7 @@ export const AudioControl: React.FC = () => {
   return (
     <button
       onClick={togglePlayPause}
-      className="fixed top-4 right-4 z-50 bg-gradient-to-br from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 active:scale-95 border-2 border-yellow-400/50"
+      className="fixed top-[33.33%] right-4 z-50 bg-gradient-to-br from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 active:scale-95 border-2 border-yellow-400/50"
       title={isPlaying ? '暂停音乐' : '播放音乐'}
       disabled={isLoading}
     >

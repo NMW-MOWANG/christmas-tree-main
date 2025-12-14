@@ -183,7 +183,7 @@ export const GestureController: React.FC<GestureControllerProps> = ({
       if (distThumbTip > distThumbBase * 1.2) extendedFingers++;
 
       // 新的手势检测逻辑
-      const isPointing = extendedFingers < 5 && extendedFingers > 0; // 少于5个指头且非握拳
+      const isPointing = extendedFingers < 5 && extendedFingers > 1; // 少于5个指头且非握拳
       const isOpenHand = extendedFingers >= 4; // 4个或以上指头为张开手掌
 
       // 调试信息（降低频率）
