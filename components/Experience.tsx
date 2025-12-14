@@ -15,10 +15,28 @@ interface ExperienceProps {
   handPosition: { x: number; y: number; detected: boolean };
   uploadedPhotos: string[];
   indexFingerDetected?: boolean;
+  onTreeClick?: () => void;
+  onPolaroidClick?: (photoIndex: number) => void;
+  zoomedPolaroid?: number | null;
 }
 
-export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uploadedPhotos, indexFingerDetected = false }) => {
+export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uploadedPhotos, indexFingerDetected = false, onTreeClick, onPolaroidClick, zoomedPolaroid }) => {
   const controlsRef = useRef<any>(null);
+  const lastClickTime = useRef<number>(0);
+
+  // 处理圣诞树双击
+  const handleTreeClick = (event: any) => {
+    event.stopPropagation();
+    const currentTime = Date.now();
+    const timeDiff = currentTime - lastClickTime.current;
+
+    if (timeDiff < 300) { // 300ms内视为双击
+      console.log('🎄 检测到双击圣诞树，切换模式');
+      onTreeClick?.();
+    }
+
+    lastClickTime.current = currentTime;
+  };
 
   // Update camera rotation based on hand position
   useFrame((_, delta) => {
@@ -98,10 +116,16 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
       />
       <pointLight position={[-10, 5, -10]} intensity={1} color="#D4AF37" />
 
-      <group position={[0, -6, 0]}>
+      <group position={[0, -6, 0]} onClick={handleTreeClick}>
         <Foliage mode={mode} count={12000} />
         <Ornaments mode={mode} count={600} />
-        <Polaroids mode={mode} uploadedPhotos={uploadedPhotos} indexFingerDetected={indexFingerDetected} />
+        <Polaroids
+          mode={mode}
+          uploadedPhotos={uploadedPhotos}
+          indexFingerDetected={indexFingerDetected}
+          onPolaroidClick={onPolaroidClick}
+          zoomedPolaroid={zoomedPolaroid}
+        />
         <TreeStar mode={mode} />
       </group>
       

@@ -52,6 +52,7 @@ export default function App() {
   const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([]);
   const [cameraConfig, setCameraConfig] = useState({ fov: 45, distance: 20 });
   const [indexFingerDetected, setIndexFingerDetected] = useState(false);
+  const [zoomedPolaroid, setZoomedPolaroid] = useState<number | null>(null);
 
   // 自适应屏幕尺寸
   React.useEffect(() => {
@@ -109,6 +110,20 @@ export default function App() {
     setUploadedPhotos(photos);
   };
 
+  // 处理双击圣诞树切换模式
+  const handleTreeClick = () => {
+    setMode((prev) => (prev === TreeMode.FORMED ? TreeMode.CHAOS : TreeMode.FORMED));
+    // 切换模式时清除拍立得放大状态
+    setZoomedPolaroid(null);
+  };
+
+  // 处理点击拍立得放大
+  const handlePolaroidClick = (photoIndex: number) => {
+    if (mode === TreeMode.CHAOS) {
+      setZoomedPolaroid(zoomedPolaroid === photoIndex ? null : photoIndex);
+    }
+  };
+
   return (
     <div className="w-full h-screen relative bg-gradient-to-b from-black via-[#001a0d] to-[#0a2f1e]">
       <ErrorBoundary>
@@ -119,11 +134,14 @@ export default function App() {
           shadows
         >
           <Suspense fallback={null}>
-            <Experience 
-              mode={mode} 
-              handPosition={handPosition} 
+            <Experience
+              mode={mode}
+              handPosition={handPosition}
               uploadedPhotos={uploadedPhotos}
               indexFingerDetected={indexFingerDetected}
+              onTreeClick={handleTreeClick}
+              onPolaroidClick={handlePolaroidClick}
+              zoomedPolaroid={zoomedPolaroid}
             />
           </Suspense>
         </Canvas>

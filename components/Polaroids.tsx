@@ -28,6 +28,8 @@ interface PolaroidsProps {
   mode: TreeMode;
   uploadedPhotos: string[];
   indexFingerDetected?: boolean; // 食指手势检测
+  onPolaroidClick?: (photoIndex: number) => void;
+  zoomedPolaroid?: number | null;
 }
 
 interface PhotoData {
@@ -40,17 +42,27 @@ interface PhotoData {
   distanceFactor: number; // 用于自适应缩放的距离因子
 }
 
-const PolaroidItem: React.FC<{ 
-  data: PhotoData; 
-  mode: TreeMode; 
+const PolaroidItem: React.FC<{
+  data: PhotoData;
+  mode: TreeMode;
   index: number;
   isZoomed?: boolean;
   zoomScale?: number;
-}> = ({ data, mode, index, isZoomed = false, zoomScale = 1 }) => {
+  onClick?: (index: number) => void;
+}> = ({ data, mode, index, isZoomed = false, zoomScale = 1, onClick }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [error, setError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // 处理拍立得点击
+  const handleClick = (event: any) => {
+    event.stopPropagation();
+    if (mode === TreeMode.CHAOS && onClick) {
+      console.log(`📸 点击了拍立得 ${index}，进入放大状态`);
+      onClick(index);
+    }
+  };
 
   // Safe texture loading with better error handling and graceful degradation
   useEffect(() => {
@@ -223,7 +235,18 @@ const PolaroidItem: React.FC<{
   }
 
   return (
-    <group ref={groupRef}>
+    <group
+      ref={groupRef}
+      onClick={handleClick}
+      onPointerOver={() => {
+        if (mode === TreeMode.CHAOS) {
+          document.body.style.cursor = 'pointer';
+        }
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = 'default';
+      }}
+    >
       
       {/* The Hanging String (Visual only) - fades out at top */}
       <mesh position={[0, 1.2, -0.1]}>
@@ -272,8 +295,7 @@ const PolaroidItem: React.FC<{
   );
 };
 
-export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, indexFingerDetected = false }) => {
-  const [zoomedIndex, setZoomedIndex] = useState<number | null>(null);
+export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, indexFingerDetected = false, onPolaroidClick, zoomedPolaroid }) => {
   const [currentZoomIndex, setCurrentZoomIndex] = useState<number>(0); // 依次展示的索引
   const previousIndexFingerState = useRef<boolean>(false); // 跟踪上一帧的手势状态
   const lastGestureTime = useRef<number>(0); // 上次手势变化的时间戳
@@ -474,7 +496,7 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, inde
   return (
     <group>
       {photoData.map((data, i) => {
-        const isZoomed = zoomedIndex === i; // 只有特定索引的拍立得放大
+        const isZoomed = zoomedPolaroid === i; // 使用传入的放大状态
         // ZOOM 状态下，放大的照片尺寸是 CHAOS 状态下正常尺寸的 1.5 倍
         const zoomScale = isZoomed ? 1.5 : 1;
 
@@ -486,6 +508,7 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, inde
             mode={mode}
             isZoomed={isZoomed}
             zoomScale={zoomScale}
+            onClick={onPolaroidClick}
           />
         );
       })}
