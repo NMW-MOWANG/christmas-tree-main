@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Environment, OrbitControls, ContactShadows } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette, Noise } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
@@ -25,6 +25,8 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
   const controlsRef = useRef<any>(null);
   const lastClickTime = useRef<number>(0);
   const autoRotateRef = useRef<number>(0); // 自旋转角度
+  const [isUserInteracting, setIsUserInteracting] = useState(false); // 用户是否正在交互
+  const autoRotateTimeoutRef = useRef<NodeJS.Timeout>(); // 自动旋转延迟定时器
 
   // 处理圣诞树双击
   const handleTreeClick = (event: any) => {
@@ -44,11 +46,6 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
   useFrame((_, delta) => {
     if (controlsRef.current) {
       const controls = controlsRef.current;
-
-      // 缓慢自旋转（仅在无手势控制时）
-      if (!handPosition.detected) {
-        autoRotateRef.current += delta * 0.1; // 每秒旋转约0.1弧度
-      }
 
       if (handPosition.detected) {
         // 手势控制模式
@@ -95,8 +92,10 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
         controls.object.position.set(x, y, z);
         controls.target.set(0, targetY, 0);
         controls.update();
-      } else {
-        // 自旋转模式：设置略俯视角度并缓慢旋转
+      } else if (!isUserInteracting) {
+        // 自动旋转模式：仅在无用户交互时
+        autoRotateRef.current += delta * 0.1; // 每秒旋转约0.1弧度
+
         const radius = controls.getDistance();
         const targetY = 0; // Tree center height
 
@@ -112,8 +111,19 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
         controls.target.set(0, targetY, 0);
         controls.update();
       }
+      // 如果用户正在交互，让 OrbitControls 处理旋转
     }
   });
+
+  // 清理定时器
+  React.useEffect(() => {
+    return () => {
+      if (autoRotateTimeoutRef.current) {
+        clearTimeout(autoRotateTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <>
       <OrbitControls
@@ -127,9 +137,27 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
         dampingFactor={0.05}
         enabled={true}
         enableRotate={!handPosition.detected} // 手势控制时禁用手动旋转
-        autoRotate={!handPosition.detected}  // 无手势时自动旋转
-        autoRotateSpeed={0.5}                  // 缓慢旋转速度
+        autoRotate={false}                     // 禁用内置自动旋转，使用自定义逻辑
         initialPolarAngle={Math.PI / 3}        // 初始俯视角度（60度）
+
+        // 用户交互事件处理
+        onStart={() => {
+          if (!handPosition.detected) {
+            setIsUserInteracting(true);
+            // 清除延迟恢复自动旋转的定时器
+            if (autoRotateTimeoutRef.current) {
+              clearTimeout(autoRotateTimeoutRef.current);
+            }
+          }
+        }}
+        onEnd={() => {
+          if (!handPosition.detected) {
+            // 延迟3秒后恢复自动旋转
+            autoRotateTimeoutRef.current = setTimeout(() => {
+              setIsUserInteracting(false);
+            }, 3000);
+          }
+        }}
       />
 
       {/* Lighting Setup for Maximum Luxury */}
