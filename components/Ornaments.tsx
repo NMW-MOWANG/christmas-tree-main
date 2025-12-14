@@ -206,7 +206,7 @@ export const Ornaments: React.FC<OrnamentsProps> = ({ mode, count }) => {
         <meshStandardMaterial 
           roughness={0.3} 
           metalness={0.5} 
-          color="#white" // Tinted by instance color
+          color="#ffffff" // Tinted by instance color
           depthTest={true}
           depthWrite={true}
         />
