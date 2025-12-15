@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
+import { Text, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 
 interface ThreeDBellProps {
@@ -101,6 +101,13 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
       scale={scale}
       onClick={handleClick}
     >
+      {/* 环境贴图 - 提供反射内容 */}
+      <Environment preset="city" background={false} />
+      
+      {/* 增强场景光照 */}
+      <hemisphereLight args={['#ffffff', '#ffd700', 0.6]} />
+      <directionalLight position={[5, 5, 5]} intensity={1} color="#ffffff" castShadow />
+      <directionalLight position={[-5, 5, -5]} intensity={0.5} color="#fff8dc" />
       {/* 铃铛挂钩 */}
       <mesh position={[0, 1.2, 0]}>
         <torusGeometry args={[0.1, 0.02, 8, 12]} />
@@ -115,35 +122,44 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
       {/* 铃铛主体组 */}
       <group ref={bellRef}>
         {/* 铃铛主体 - 纯金黄色圆锥形 */}
-        <mesh position={[0, 0, 0]}>
+        <mesh position={[0, 0, 0]} receiveShadow castShadow>
           <cylinderGeometry args={[0.6, 0.8, 1.2, 16]} />
           <meshStandardMaterial 
             color="#FFD700" 
             metalness={0.95} 
             roughness={0.05}
             envMapIntensity={1.2}
+            reflectivity={1.0}
+            clearcoat={0.3}
+            clearcoatRoughness={0.1}
           />
         </mesh>
         
         {/* 铃铛顶部装饰环 */}
-        <mesh position={[0, 0.6, 0]}>
+        <mesh position={[0, 0.6, 0]} receiveShadow castShadow>
           <torusGeometry args={[0.65, 0.05, 16, 8]} />
           <meshStandardMaterial 
             color="#FFED4E" 
             metalness={0.98} 
             roughness={0.02}
             envMapIntensity={1.5}
+            reflectivity={1.0}
+            clearcoat={0.4}
+            clearcoatRoughness={0.05}
           />
         </mesh>
         
         {/* 铃铛开口底部 */}
-        <mesh position={[0, -0.6, 0]}>
+        <mesh position={[0, -0.6, 0]} receiveShadow castShadow>
           <ringGeometry args={[0.4, 0.6, 16]} />
           <meshStandardMaterial 
             color="#F4C430" 
             metalness={0.9} 
             roughness={0.08}
             envMapIntensity={0.8}
+            reflectivity={1.0}
+            clearcoat={0.2}
+            clearcoatRoughness={0.15}
           />
         </mesh>
         
@@ -159,13 +175,16 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
             />
           </mesh>
           {/* 连接线 */}
-          <mesh position={[0, 0.3, 0]}>
+          <mesh position={[0, 0.3, 0]} receiveShadow castShadow>
             <cylinderGeometry args={[0.01, 0.01, 0.2]} />
             <meshStandardMaterial 
               color="#FFD700" 
               metalness={0.9} 
               roughness={0.05}
               envMapIntensity={1.0}
+              reflectivity={1.0}
+              clearcoat={0.1}
+              clearcoatRoughness={0.2}
             />
           </mesh>
         </group>
