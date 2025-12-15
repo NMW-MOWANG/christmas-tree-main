@@ -137,20 +137,36 @@ export const ThreeDAudioControl: React.FC = () => {
     };
   }, [playlist, index]);
 
-  // 自动播放逻辑
+  // 自动播放逻辑 - 页面加载完成后自动尝试播放
+  useEffect(() => {
+    if (audioRef.current && audioReady && !isPlaying) {
+      console.log('🎵 音频就绪，尝试自动播放');
+      audioRef.current.play().then(() => {
+        console.log('🎶 音频自动播放成功');
+        setIsPlaying(true);
+        setHasUserInteracted(true); // 标记为已交互
+      }).catch((err) => {
+        console.warn('⚠️ 自动播放失败，等待用户交互:', err);
+        console.log('💡 提示：点击铃铛可触发音频播放');
+        // 失败时设置为需要用户交互
+        setHasUserInteracted(false);
+      });
+    }
+  }, [audioReady, isPlaying]);
+  
+  // 用户交互后重新尝试播放的逻辑
   useEffect(() => {
     if (hasUserInteracted && audioRef.current && audioReady && !isPlaying) {
-      console.log('👆 用户交互且音频就绪，尝试播放音频');
+      console.log('👆 用户交互后尝试播放音频');
       audioRef.current.play().then(() => {
         console.log('🎶 音频播放成功');
         setIsPlaying(true);
       }).catch((err) => {
-        console.warn('⚠️ 音频播放失败:', err);
-        console.log('💡 提示：点击页面任意位置可触发音频播放');
+        console.warn('⚠️ 用户交互后播放失败:', err);
         setIsPlaying(false);
       });
     }
-  }, [hasUserInteracted, audioReady]);
+  }, [hasUserInteracted, audioReady, isPlaying]);
 
   // 切换播放状态
   const togglePlayPause = () => {
@@ -163,14 +179,15 @@ export const ThreeDAudioControl: React.FC = () => {
       audioRef.current.pause();
       console.log('⏸️ 用户暂停音频');
     } else {
-      if (!hasUserInteracted) {
-        setHasUserInteracted(true);
-      }
-
+      // 确保用户交互状态
+      setHasUserInteracted(true);
+      
       audioRef.current.play().then(() => {
         console.log('▶️ 用户播放音频');
+        setIsPlaying(true);
       }).catch((err) => {
         console.warn('⚠️ 播放失败:', err);
+        console.log('💡 提示：某些浏览器需要用户交互后才能播放音频');
       });
     }
   };
