@@ -105,22 +105,23 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
       <mesh position={[0, 1.2, 0]}>
         <torusGeometry args={[0.1, 0.02, 8, 12]} />
         <meshStandardMaterial 
-          color="#D4AF37" 
-          metalness={0.9} 
-          roughness={0.1} 
+          color="#FFD700" 
+          metalness={0.95} 
+          roughness={0.05} 
+          envMapIntensity={1.0}
         />
       </mesh>
       
       {/* 铃铛主体组 */}
       <group ref={bellRef}>
-        {/* 铃铛主体 - 金色圆锥形 */}
+        {/* 铃铛主体 - 纯金黄色圆锥形 */}
         <mesh position={[0, 0, 0]}>
           <cylinderGeometry args={[0.6, 0.8, 1.2, 16]} />
           <meshStandardMaterial 
             color="#FFD700" 
-            metalness={0.8} 
-            roughness={0.2}
-            envMapIntensity={0.5}
+            metalness={0.95} 
+            roughness={0.05}
+            envMapIntensity={1.2}
           />
         </mesh>
         
@@ -128,9 +129,10 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
         <mesh position={[0, 0.6, 0]}>
           <torusGeometry args={[0.65, 0.05, 16, 8]} />
           <meshStandardMaterial 
-            color="#FFA500" 
-            metalness={0.9} 
-            roughness={0.1} 
+            color="#FFED4E" 
+            metalness={0.98} 
+            roughness={0.02}
+            envMapIntensity={1.5}
           />
         </mesh>
         
@@ -138,9 +140,10 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
         <mesh position={[0, -0.6, 0]}>
           <ringGeometry args={[0.4, 0.6, 16]} />
           <meshStandardMaterial 
-            color="#DAA520" 
-            metalness={0.8} 
-            roughness={0.3} 
+            color="#F4C430" 
+            metalness={0.9} 
+            roughness={0.08}
+            envMapIntensity={0.8}
           />
         </mesh>
         
@@ -149,18 +152,20 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
           <mesh position={[0, 0.1, 0]}>
             <sphereGeometry args={[0.08, 16, 16]} />
             <meshStandardMaterial 
-              color="#DC143C" 
-              metalness={0.3} 
-              roughness={0.4} 
+              color="#8B4513" 
+              metalness={0.7} 
+              roughness={0.1}
+              envMapIntensity={0.6}
             />
           </mesh>
           {/* 连接线 */}
           <mesh position={[0, 0.3, 0]}>
             <cylinderGeometry args={[0.01, 0.01, 0.2]} />
             <meshStandardMaterial 
-              color="#8B4513" 
-              metalness={0.5} 
-              roughness={0.3} 
+              color="#FFD700" 
+              metalness={0.9} 
+              roughness={0.05}
+              envMapIntensity={1.0}
             />
           </mesh>
         </group>
@@ -191,23 +196,49 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
         <mesh position={[0.2, 0.2, 0.4]}>
           <sphereGeometry args={[0.05, 8, 8]} />
           <meshStandardMaterial 
-            color="#FFFACD" 
-            emissive="#FFFACD"
-            emissiveIntensity={0.3}
+            color="#FFF8DC" 
+            emissive="#FFFFE0"
+            emissiveIntensity={0.8}
             transparent 
-            opacity={0.6} 
+            opacity={0.7}
+            metalness={0.5}
+            roughness={0.1}
+          />
+        </mesh>
+
+        {/* 额外的金属高光点 */}
+        <mesh position={[-0.15, 0.1, 0.3]}>
+          <sphereGeometry args={[0.03, 8, 8]} />
+          <meshStandardMaterial 
+            color="#FFFFE0" 
+            emissive="#FFFFE0"
+            emissiveIntensity={0.6}
+            transparent 
+            opacity={0.5}
+            metalness={0.8}
+            roughness={0.02}
           />
         </mesh>
       </group>
       
       {/* 发光效果（播放时） */}
       {isPlaying && (
-        <pointLight 
-          position={[0, 0, 0.5]} 
-          intensity={0.3} 
-          color="#FFD700" 
-          distance={2} 
-        />
+        <>
+          <pointLight 
+            position={[0, 0, 0.5]} 
+            intensity={0.8} 
+            color="#FFD700" 
+            distance={3}
+            decay={2}
+          />
+          <pointLight 
+            position={[0, 0.5, -0.2]} 
+            intensity={0.4} 
+            color="#FFED4E" 
+            distance={2}
+            decay={1.5}
+          />
+        </>
       )}
       
       {/* 点击提示文字 */}
