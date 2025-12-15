@@ -112,8 +112,12 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
       scale={scale}
       onClick={handleClick}
     >
-      {/* 移除外部环境贴图，避免国内访问问题 */}
-      {/* <Environment preset="city" background={false} /> */}
+      {/* 使用本地HDR环境贴图 */}
+      <Environment 
+        files={['/env.hdr']} 
+        background={false} 
+        environmentIntensity={1.5}
+      />
       
       {/* 增强场景光照 */}
       <hemisphereLight args={['#ffffff', '#ffd700', 0.6]} />
@@ -131,19 +135,47 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
       
       {/* 铃铛主体组 */}
       <group ref={bellRef}>
-        {/* 铃铛主体 - 更精美的钟形 */}
-        <mesh position={[0, 0, 0]} receiveShadow castShadow>
-          {/* 使用钟形几何体而非简单的圆柱 */}
-          <sphereGeometry args={[0.65, 32, 32]} />
-          <meshStandardMaterial 
-            color="#FFD700" 
-            metalness={0.98} 
-            roughness={0.03}
-            reflectivity={1.0}
-            clearcoat={0.5}
-            clearcoatRoughness={0.05}
-          />
-        </mesh>
+        {/* 铃铛主体 - 圆锥和球体组合 */}
+        <group position={[0, 0, 0]} receiveShadow castShadow>
+          {/* 主体圆锥部分 */}
+          <mesh position={[0, 0.1, 0]}>
+            <cylinderGeometry args={[0.5, 0.7, 0.8, 16]} />
+            <meshStandardMaterial 
+              color="#FFD700" 
+              metalness={0.98} 
+              roughness={0.03}
+              reflectivity={1.0}
+              clearcoat={0.5}
+              clearcoatRoughness={0.05}
+            />
+          </mesh>
+          
+          {/* 底部球体部分 */}
+          <mesh position={[0, -0.25, 0]}>
+            <sphereGeometry args={[0.45, 24, 24]} />
+            <meshStandardMaterial 
+              color="#FFD700" 
+              metalness={0.98} 
+              roughness={0.03}
+              reflectivity={1.0}
+              clearcoat={0.5}
+              clearcoatRoughness={0.05}
+            />
+          </mesh>
+          
+          {/* 中间连接环 */}
+          <mesh position={[0, -0.05, 0]}>
+            <torusGeometry args={[0.52, 0.03, 16, 8]} />
+            <meshStandardMaterial 
+              color="#FFED4E" 
+              metalness={0.99} 
+              roughness={0.01}
+              reflectivity={1.0}
+              clearcoat={0.6}
+              clearcoatRoughness={0.02}
+            />
+          </mesh>
+        </group>
         
         {/* 铃铛顶部装饰环 - 更华丽的环 */}
         <mesh position={[0, 0.65, 0]} receiveShadow castShadow>
@@ -171,16 +203,16 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
             clearcoatRoughness={0.08}
           />
         </mesh>
-        
         {/* 铃铛内部开槽装饰 */}
-        <mesh position={[0, -0.3, 0]} receiveShadow castShadow>
+        <mesh position={[0, -0.35, 0]} receiveShadow castShadow>
+          <ringGeometry args={[0.18, 0.22, 16]} />
           <meshStandardMaterial 
             color="#F4C430" 
             metalness={0.9} 
-            roughness={0.08}
+            roughness={0.1}
             reflectivity={0.8}
             clearcoat={0.2}
-            clearcoatRoughness={0.15}
+            clearcoatRoughness={0.2}
           />
         </mesh>
         
