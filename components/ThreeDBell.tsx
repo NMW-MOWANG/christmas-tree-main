@@ -112,8 +112,8 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
       scale={scale}
       onClick={handleClick}
     >
-      {/* 环境贴图 - 提供反射内容 */}
-      <Environment preset="city" background={false} />
+      {/* 移除外部环境贴图，避免国内访问问题 */}
+      {/* <Environment preset="city" background={false} /> */}
       
       {/* 增强场景光照 */}
       <hemisphereLight args={['#ffffff', '#ffd700', 0.6]} />
@@ -126,7 +126,6 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
           color="#FFD700" 
           metalness={0.95} 
           roughness={0.05} 
-          envMapIntensity={1.0}
         />
       </mesh>
       
@@ -140,7 +139,6 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
             color="#FFD700" 
             metalness={0.98} 
             roughness={0.03}
-            envMapIntensity={1.8}
             reflectivity={1.0}
             clearcoat={0.5}
             clearcoatRoughness={0.05}
@@ -168,7 +166,6 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
             color="#F4C430" 
             metalness={0.95} 
             roughness={0.05}
-            envMapIntensity={1.2}
             reflectivity={1.0}
             clearcoat={0.3}
             clearcoatRoughness={0.08}
@@ -177,15 +174,13 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
         
         {/* 铃铛内部开槽装饰 */}
         <mesh position={[0, -0.3, 0]} receiveShadow castShadow>
-          <ringGeometry args={[0.2, 0.25, 16]} />
           <meshStandardMaterial 
             color="#F4C430" 
             metalness={0.9} 
-            roughness={0.1}
-            envMapIntensity={0.6}
+            roughness={0.08}
             reflectivity={0.8}
             clearcoat={0.2}
-            clearcoatRoughness={0.2}
+            clearcoatRoughness={0.15}
           />
         </mesh>
         
@@ -193,25 +188,23 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
         <group ref={clapperRef}>
           <mesh position={[0, 0.1, 0]}>
             <sphereGeometry args={[0.08, 16, 16]} />
-            <meshStandardMaterial 
-              color="#8B4513" 
-              metalness={0.7} 
-              roughness={0.1}
-              envMapIntensity={0.6}
-            />
+          <meshStandardMaterial 
+            color="#8B4513" 
+            metalness={0.7} 
+            roughness={0.1}
+          />
           </mesh>
           {/* 连接线 */}
           <mesh position={[0, 0.3, 0]} receiveShadow castShadow>
             <cylinderGeometry args={[0.01, 0.01, 0.2]} />
-            <meshStandardMaterial 
-              color="#FFD700" 
-              metalness={0.9} 
-              roughness={0.05}
-              envMapIntensity={1.0}
-              reflectivity={1.0}
-              clearcoat={0.1}
-              clearcoatRoughness={0.2}
-            />
+          <meshStandardMaterial 
+            color="#FFD700" 
+            metalness={0.9} 
+            roughness={0.05}
+            reflectivity={1.0}
+            clearcoat={0.1}
+            clearcoatRoughness={0.2}
+          />
           </mesh>
         </group>
         
@@ -229,10 +222,10 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
               rotation={[needle.rot, 0, 0]}
             >
               <cylinderGeometry args={[0.02, 0.01, 0.3, 6]} />
-              <meshStandardMaterial 
-                color="#0F7938" 
-                roughness={0.8} 
-              />
+            <meshStandardMaterial 
+              color="#0F7938" 
+              roughness={0.8} 
+            />
             </mesh>
           ))}
         </group>
