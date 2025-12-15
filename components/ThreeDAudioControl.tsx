@@ -177,13 +177,14 @@ export const ThreeDAudioControl: React.FC = () => {
 
   return (
     <div className="fixed top-[33.33%] right-4 z-50">
-      <div className="w-32 h-32 bg-gradient-to-br from-green-900/10 to-blue-900/10 backdrop-blur-sm rounded-2xl shadow-2xl border border-yellow-400/20 hover:border-yellow-400/40 transition-all duration-300 hover:scale-105 overflow-hidden">
+      <div className="w-32 h-32 bg-gradient-to-br from-green-900/5 to-blue-900/5 backdrop-blur-sm rounded-2xl shadow-xl border-0 hover:shadow-2xl transition-all duration-300 hover:scale-110 overflow-hidden">
         <Canvas
           camera={{ position: [0, 0, 5], fov: 50 }}
           style={{ 
             borderRadius: '1rem',
             border: 'none',
-            outline: 'none'
+            outline: 'none',
+            background: 'transparent'
           }}
         >
           <ambientLight intensity={0.6} color="#FFA500" />
@@ -204,23 +205,6 @@ export const ThreeDAudioControl: React.FC = () => {
             enabled={false} 
           />
         </Canvas>
-      </div>
-      
-      {/* 状态指示器 */}
-      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full">
-        {isLoading ? (
-          <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-        ) : isPlaying ? (
-          <>
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-xs text-white">播放中</span>
-          </>
-        ) : (
-          <>
-            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-            <span className="text-xs text-white">已暂停</span>
-          </>
-        )}
       </div>
     </div>
   );

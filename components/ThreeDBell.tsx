@@ -31,29 +31,37 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
     
     const time = state.clock.getElapsedTime();
     
-    // 铃铛主体轻微摇摆（播放时）
+    // 铃铛主体摇摆（播放时大幅晃动）
     if (isPlaying) {
-      swayOffset.current = Math.sin(time * 3) * 0.05;
-      clapperSwing.current = Math.sin(time * 6) * 0.15;
+      // 大幅度的多轴摇摆
+      swayOffset.current = Math.sin(time * 4) * 0.15; // Z轴左右摇摆
+      const pitchSway = Math.sin(time * 3.5) * 0.1; // Y轴前后摇摆
+      const rollSway = Math.cos(time * 2.8) * 0.08; // X轴倾斜摇摆
+      
+      bellRef.current.rotation.z = swayOffset.current;
+      bellRef.current.rotation.y = pitchSway;
+      bellRef.current.rotation.x = rollSway;
+      
+      // 铃铛内部小球剧烈摆动
+      clapperSwing.current = Math.sin(time * 8) * 0.25 + Math.cos(time * 5) * 0.1;
+      clapperRef.current.rotation.x = clapperSwing.current;
+      clapperRef.current.rotation.y = Math.sin(time * 6) * 0.05;
     } else {
       // 静止时缓慢回弹
-      swayOffset.current *= 0.95;
-      clapperSwing.current *= 0.9;
+      swayOffset.current *= 0.92;
+      clapperSwing.current *= 0.85;
+      bellRef.current.rotation.z = swayOffset.current;
+      bellRef.current.rotation.y *= 0.95;
+      bellRef.current.rotation.x *= 0.95;
+      clapperRef.current.rotation.x = clapperSwing.current;
     }
-    
-    // 应用摇摆动画
-    bellRef.current.rotation.z = swayOffset.current;
-    bellRef.current.rotation.y = Math.sin(time * 0.5) * 0.02;
-    
-    // 铃铛内部小球摆动
-    clapperRef.current.rotation.x = clapperSwing.current;
     
     // 悬停时的缩放效果
     if (groupRef.current) {
-      const targetScale = isHovered ? 1.1 : 1.0;
+      const targetScale = isHovered ? 1.15 : 1.0;
       groupRef.current.scale.lerp(
         new THREE.Vector3(targetScale, targetScale, targetScale), 
-        delta * 5
+        delta * 6
       );
     }
   });
@@ -63,12 +71,15 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
     event.stopPropagation();
     onClick();
     
-    // 点击时添加额外的摇摆动画
+    // 点击时添加强烈摇摆动画
     if (bellRef.current) {
-      swayOffset.current = 0.3;
+      swayOffset.current = 0.5;
       setTimeout(() => {
-        swayOffset.current = -0.2;
-      }, 100);
+        swayOffset.current = -0.4;
+      }, 80);
+      setTimeout(() => {
+        swayOffset.current = 0.3;
+      }, 160);
     }
   }, [onClick]);
   
@@ -121,45 +132,60 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
       
       {/* 铃铛主体组 */}
       <group ref={bellRef}>
-        {/* 铃铛主体 - 纯金黄色圆锥形 */}
+        {/* 铃铛主体 - 更精美的钟形 */}
         <mesh position={[0, 0, 0]} receiveShadow castShadow>
-          <cylinderGeometry args={[0.6, 0.8, 1.2, 16]} />
+          {/* 使用钟形几何体而非简单的圆柱 */}
+          <sphereGeometry args={[0.65, 32, 32]} />
           <meshStandardMaterial 
             color="#FFD700" 
+            metalness={0.98} 
+            roughness={0.03}
+            envMapIntensity={1.8}
+            reflectivity={1.0}
+            clearcoat={0.5}
+            clearcoatRoughness={0.05}
+          />
+        </mesh>
+        
+        {/* 铃铛顶部装饰环 - 更华丽的环 */}
+        <mesh position={[0, 0.65, 0]} receiveShadow castShadow>
+          <torusGeometry args={[0.7, 0.06, 24, 12]} />
+          <meshStandardMaterial 
+            color="#FFED4E" 
+            metalness={0.99} 
+            roughness={0.01}
+            envMapIntensity={2.0}
+            reflectivity={1.0}
+            clearcoat={0.6}
+            clearcoatRoughness={0.02}
+          />
+        </mesh>
+        
+        {/* 铃铛底部装饰边 */}
+        <mesh position={[0, -0.65, 0]} receiveShadow castShadow>
+          <torusGeometry args={[0.68, 0.03, 24, 8]} />
+          <meshStandardMaterial 
+            color="#F4C430" 
             metalness={0.95} 
             roughness={0.05}
             envMapIntensity={1.2}
             reflectivity={1.0}
             clearcoat={0.3}
-            clearcoatRoughness={0.1}
+            clearcoatRoughness={0.08}
           />
         </mesh>
         
-        {/* 铃铛顶部装饰环 */}
-        <mesh position={[0, 0.6, 0]} receiveShadow castShadow>
-          <torusGeometry args={[0.65, 0.05, 16, 8]} />
-          <meshStandardMaterial 
-            color="#FFED4E" 
-            metalness={0.98} 
-            roughness={0.02}
-            envMapIntensity={1.5}
-            reflectivity={1.0}
-            clearcoat={0.4}
-            clearcoatRoughness={0.05}
-          />
-        </mesh>
-        
-        {/* 铃铛开口底部 */}
-        <mesh position={[0, -0.6, 0]} receiveShadow castShadow>
-          <ringGeometry args={[0.4, 0.6, 16]} />
+        {/* 铃铛内部开槽装饰 */}
+        <mesh position={[0, -0.3, 0]} receiveShadow castShadow>
+          <ringGeometry args={[0.2, 0.25, 16]} />
           <meshStandardMaterial 
             color="#F4C430" 
             metalness={0.9} 
-            roughness={0.08}
-            envMapIntensity={0.8}
-            reflectivity={1.0}
+            roughness={0.1}
+            envMapIntensity={0.6}
+            reflectivity={0.8}
             clearcoat={0.2}
-            clearcoatRoughness={0.15}
+            clearcoatRoughness={0.2}
           />
         </mesh>
         
@@ -211,31 +237,56 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
           ))}
         </group>
         
-        {/* 高光效果 */}
-        <mesh position={[0.2, 0.2, 0.4]}>
-          <sphereGeometry args={[0.05, 8, 8]} />
+        {/* 增强的高光效果 - 多个高光点 */}
+        <mesh position={[0.15, 0.15, 0.45]}>
+          <sphereGeometry args={[0.06, 16, 16]} />
           <meshStandardMaterial 
-            color="#FFF8DC" 
-            emissive="#FFFFE0"
-            emissiveIntensity={0.8}
+            color="#FFFFFF" 
+            emissive="#FFFFFF"
+            emissiveIntensity={1.2}
             transparent 
-            opacity={0.7}
-            metalness={0.5}
-            roughness={0.1}
+            opacity={0.6}
+            metalness={0.6}
+            roughness={0.08}
           />
         </mesh>
 
-        {/* 额外的金属高光点 */}
-        <mesh position={[-0.15, 0.1, 0.3]}>
+        <mesh position={[-0.18, 0.12, 0.35]}>
+          <sphereGeometry args={[0.04, 12, 12]} />
+          <meshStandardMaterial 
+            color="#FFFACD" 
+            emissive="#FFFACD"
+            emissiveIntensity={0.8}
+            transparent 
+            opacity={0.5}
+            metalness={0.7}
+            roughness={0.05}
+          />
+        </mesh>
+        
+        <mesh position={[0.08, 0.25, 0.5]}>
           <sphereGeometry args={[0.03, 8, 8]} />
           <meshStandardMaterial 
             color="#FFFFE0" 
             emissive="#FFFFE0"
             emissiveIntensity={0.6}
             transparent 
-            opacity={0.5}
+            opacity={0.4}
             metalness={0.8}
             roughness={0.02}
+          />
+        </mesh>
+
+        <mesh position={[-0.08, -0.1, 0.4]}>
+          <sphereGeometry args={[0.025, 8, 8]} />
+          <meshStandardMaterial 
+            color="#FFF8DC" 
+            emissive="#FFF8DC"
+            emissiveIntensity={0.5}
+            transparent 
+            opacity={0.3}
+            metalness={0.9}
+            roughness={0.01}
           />
         </mesh>
       </group>
@@ -260,18 +311,7 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
         </>
       )}
       
-      {/* 点击提示文字 */}
-      {isHovered && (
-        <Text
-          position={[0, -1.5, 0]}
-          fontSize={0.15}
-          color="#FFD700"
-          anchorX="center"
-          anchorY="middle"
-        >
-          {isPlaying ? '点击暂停' : '点击播放'}
-        </Text>
-      )}
+      {/* 移除点击提示文字，保持简洁 */}
     </group>
   );
 };
