@@ -176,11 +176,15 @@ export const ThreeDAudioControl: React.FC = () => {
   };
 
   return (
-    <div className="fixed top-4 right-4 z-50">
-      <div className="w-32 h-32 bg-gradient-to-br from-red-900/20 to-red-800/20 backdrop-blur-sm rounded-2xl shadow-2xl border border-yellow-400/30 hover:border-yellow-400/50 transition-all duration-300 hover:scale-105">
+    <div className="fixed top-[33.33%] right-4 z-50">
+      <div className="w-32 h-32 bg-gradient-to-br from-green-900/10 to-blue-900/10 backdrop-blur-sm rounded-2xl shadow-2xl border border-yellow-400/20 hover:border-yellow-400/40 transition-all duration-300 hover:scale-105 overflow-hidden">
         <Canvas
           camera={{ position: [0, 0, 5], fov: 50 }}
-          style={{ borderRadius: '1rem' }}
+          style={{ 
+            borderRadius: '1rem',
+            border: 'none',
+            outline: 'none'
+          }}
         >
           <ambientLight intensity={0.6} color="#FFA500" />
           <pointLight position={[5, 5, 5]} intensity={0.3} color="#FFD700" />
