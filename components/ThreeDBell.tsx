@@ -191,9 +191,9 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
           />
         </mesh>
         
-        {/* 铃铛底部装饰边 */}
+        {/* 铃铛底部装饰边 - 简化版本 */}
         <mesh position={[0, -0.65, 0]} receiveShadow castShadow>
-          <torusGeometry args={[0.68, 0.03, 24, 8]} />
+          <torusGeometry args={[0.68, 0.02, 16, 8]} />
           <meshStandardMaterial 
             color="#F4C430" 
             metalness={0.95} 
@@ -240,20 +240,20 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
           </mesh>
         </group>
         
-        {/* 圣诞装饰 - 松针 */}
+        {/* 圣诞装饰 - 简化松针 */}
         <group>
           {[
-            { x: -0.3, y: 0.3, z: 0, rot: 0.2 },
-            { x: 0.3, y: 0.3, z: 0, rot: -0.2 },
-            { x: -0.4, y: 0.1, z: 0.1, rot: 0.4 },
-            { x: 0.4, y: 0.1, z: 0.1, rot: -0.4 }
+            { x: -0.25, y: 0.2, z: 0, rot: 0.15 },
+            { x: 0.25, y: 0.2, z: 0, rot: -0.15 },
+            { x: -0.3, y: 0.05, z: 0.05, rot: 0.3 },
+            { x: 0.3, y: 0.05, z: 0.05, rot: -0.3 }
           ].map((needle, i) => (
             <mesh 
               key={i}
               position={[needle.x, needle.y, needle.z]}
               rotation={[needle.rot, 0, 0]}
             >
-              <cylinderGeometry args={[0.02, 0.01, 0.3, 6]} />
+              <cylinderGeometry args={[0.015, 0.008, 0.25, 6]} />
             <meshStandardMaterial 
               color="#0F7938" 
               roughness={0.8} 

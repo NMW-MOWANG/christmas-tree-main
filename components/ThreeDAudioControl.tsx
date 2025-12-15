@@ -154,15 +154,15 @@ export const ThreeDAudioControl: React.FC = () => {
     }
   }, [audioReady, isPlaying]);
   
-  // 用户交互后重新尝试播放的逻辑
+  // 手势交互时立即播放音乐的逻辑
   useEffect(() => {
     if (hasUserInteracted && audioRef.current && audioReady && !isPlaying) {
-      console.log('👆 用户交互后尝试播放音频');
+      console.log('?? 手势交互检测到，立即播放音频');
       audioRef.current.play().then(() => {
-        console.log('🎶 音频播放成功');
+        console.log('🎶 手势触发音频播放成功');
         setIsPlaying(true);
       }).catch((err) => {
-        console.warn('⚠️ 用户交互后播放失败:', err);
+        console.warn('⚠️ 手势触发播放失败:', err);
         setIsPlaying(false);
       });
     }
