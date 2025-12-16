@@ -61,36 +61,53 @@ export default function App() {
       const height = window.innerHeight;
       const aspect = width / height;
       
-      // 根据屏幕尺寸调整FOV和距离，确保圣诞树不超出屏幕
-      let fov = 45;
-      let distance = 20;
+      // 根据屏幕长宽比例调整FOV和距离，确保圣诞树完整显示
+      let fov = 50;
+      let distance = 25;
       
-      if (width < 768) {
-        // 移动设备
+      if (aspect >= 2.5) {
+        // 超宽屏设备 (16:9, 21:9 等)
+        fov = 55;
+        distance = 28;
+        console.log('🖥 检测到超宽屏设备，调整视角参数');
+      } else if (aspect >= 2.0) {
+        // 宽屏设备 (16:10, 18:9 等)
+        fov = 52;
+        distance = 26;
+        console.log('🖥 检测到宽屏设备，调整视角参数');
+      } else if (aspect >= 1.5) {
+        // 标准宽屏 (16:10, 16:9 等)
         fov = 50;
-        distance = 18;
-      } else if (width < 1024) {
-        // 平板
-        fov = 47;
-        distance = 19;
+        distance = 25;
+        console.log('?? 检测到标准宽屏设备，使用默认参数');
+      } else if (aspect >= 1.0) {
+        // 接近正方形或竖屏
+        fov = 48;
+        distance = 22;
+        console.log('📱 检测到方形或竖屏设备，调整视角参数');
       } else {
-        // 桌面
+        // 竖屏设备
         fov = 45;
         distance = 20;
+        console.log('📱 检测到竖屏设备，调整视角参数');
       }
       
-      // 根据宽高比进一步调整
-      if (aspect > 2) {
-        // 超宽屏
-        fov = Math.max(40, fov - 5);
-        distance = Math.max(18, distance + 2);
-      } else if (aspect < 1) {
-        // 竖屏
-        fov = Math.min(55, fov + 5);
-        distance = Math.min(22, distance - 2);
+      // 根据屏幕尺寸进行微调
+      if (width < 768) {
+        // 移动设备适配
+        distance = Math.max(distance - 3, 18);
+        fov = Math.min(fov + 5, 60);
+        console.log('📱 移动设备适配完成');
+      } else if (width < 1024) {
+        // 平板设备适配
+        distance = Math.max(distance - 2, 20);
+        fov = Math.min(fov + 3, 58);
+        console.log('📱 平板设备适配完成');
       }
+      // 桌面设备使用默认参数
       
       setCameraConfig({ fov, distance });
+      console.log(`📺 屏幕适配完成: ${width}x${height}, 比例: ${aspect.toFixed(2)}, FOV: ${fov}, 距离: ${distance}`);
     };
     
     updateCamera();
