@@ -98,7 +98,7 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
       setIsHovered(distance < 0.5);
     };
     
-    const element = groupRef.current;
+    const element = document.querySelector('canvas');
     if (element) {
       element.addEventListener('mousemove', handleMouseMove);
       return () => element.removeEventListener('mousemove', handleMouseMove);
@@ -144,9 +144,7 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
               color="#FFD700" 
               metalness={0.98} 
               roughness={0.03}
-              reflectivity={1.0}
-              clearcoat={0.5}
-              clearcoatRoughness={0.05}
+              envMapIntensity={1.0}
             />
           </mesh>
           
@@ -157,9 +155,7 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
               color="#FFD700" 
               metalness={0.98} 
               roughness={0.03}
-              reflectivity={1.0}
-              clearcoat={0.5}
-              clearcoatRoughness={0.05}
+              envMapIntensity={1.0}
             />
           </mesh>
           
@@ -170,9 +166,7 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
               color="#FFED4E" 
               metalness={0.99} 
               roughness={0.01}
-              reflectivity={1.0}
-              clearcoat={0.6}
-              clearcoatRoughness={0.02}
+              envMapIntensity={1.0}
             />
           </mesh>
         </group>
@@ -185,24 +179,10 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
             metalness={0.99} 
             roughness={0.01}
             envMapIntensity={2.0}
-            reflectivity={1.0}
-            clearcoat={0.6}
-            clearcoatRoughness={0.02}
           />
         </mesh>
         
-        {/* 铃铛底部装饰边 - 简化版本 */}
-        <mesh position={[0, -0.65, 0]} receiveShadow castShadow>
-          <torusGeometry args={[0.68, 0.02, 16, 8]} />
-          <meshStandardMaterial 
-            color="#F4C430" 
-            metalness={0.95} 
-            roughness={0.05}
-            reflectivity={1.0}
-            clearcoat={0.3}
-            clearcoatRoughness={0.08}
-          />
-        </mesh>
+
         {/* 铃铛内部开槽装饰 */}
         <mesh position={[0, -0.35, 0]} receiveShadow castShadow>
           <ringGeometry args={[0.18, 0.22, 16]} />
@@ -210,9 +190,7 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
             color="#F4C430" 
             metalness={0.9} 
             roughness={0.1}
-            reflectivity={0.8}
-            clearcoat={0.2}
-            clearcoatRoughness={0.2}
+            envMapIntensity={0.8}
           />
         </mesh>
         
@@ -233,9 +211,7 @@ const ThreeDBell: React.FC<ThreeDBellProps> = ({
             color="#FFD700" 
             metalness={0.9} 
             roughness={0.05}
-            reflectivity={1.0}
-            clearcoat={0.1}
-            clearcoatRoughness={0.2}
+            envMapIntensity={1.0}
           />
           </mesh>
         </group>

@@ -1,11 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import ThreeDBell from './ThreeDBell';
 
 const MANIFEST_URL = '/audio/manifest.json';
 
-export const ThreeDAudioControl: React.FC = () => {
+interface AutoAudioControlProps {
+  isAutoRotating: boolean;
+  isUserInteracting: boolean;
+  handDetected: boolean;
+}
+
+export const AutoAudioControl: React.FC<AutoAudioControlProps> = ({ 
+  isAutoRotating, 
+  isUserInteracting, 
+  handDetected 
+}) => {
   const [playlist, setPlaylist] = useState<string[]>([]);
   const [index, setIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -137,92 +144,35 @@ export const ThreeDAudioControl: React.FC = () => {
     };
   }, [playlist, index]);
 
-  // 自动播放逻辑 - 页面加载完成后自动尝试播放
+  // 自动播放逻辑 - 当检测到自动旋转或用户交互时播放
   useEffect(() => {
-    if (audioRef.current && audioReady && !isPlaying) {
-      console.log('🎵 音频就绪，尝试自动播放');
-      audioRef.current.play().then(() => {
-        console.log('🎶 音频自动播放成功');
-        setIsPlaying(true);
-        setHasUserInteracted(true); // 标记为已交互
-      }).catch((err) => {
-        console.warn('⚠️ 自动播放失败，等待用户交互:', err);
-        console.log('💡 提示：点击铃铛可触发音频播放');
-        // 失败时设置为需要用户交互
-        setHasUserInteracted(false);
-      });
-    }
-  }, [audioReady, isPlaying]);
-  
-  // 手势交互时立即播放音乐的逻辑
-  useEffect(() => {
-    if (hasUserInteracted && audioRef.current && audioReady && !isPlaying) {
-      console.log('?? 手势交互检测到，立即播放音频');
-      audioRef.current.play().then(() => {
-        console.log('🎶 手势触发音频播放成功');
-        setIsPlaying(true);
-      }).catch((err) => {
-        console.warn('⚠️ 手势触发播放失败:', err);
-        setIsPlaying(false);
-      });
-    }
-  }, [hasUserInteracted, audioReady, isPlaying]);
+    if (!audioRef.current || !audioReady) return;
 
-  // 切换播放状态
-  const togglePlayPause = () => {
-    if (!audioRef.current || !audioReady || isLoading) {
-      console.log('⏸️ 音频未就绪或正在加载中');
-      return;
-    }
-
-    if (isPlaying) {
-      audioRef.current.pause();
-      console.log('⏸️ 用户暂停音频');
-    } else {
+    const shouldPlay = isAutoRotating || isUserInteracting || handDetected;
+    
+    if (shouldPlay && !isPlaying) {
+      console.log('🎵 检测到触发条件，开始播放音频:', {
+        isAutoRotating,
+        isUserInteracting,
+        handDetected
+      });
+      
       // 确保用户交互状态
       setHasUserInteracted(true);
       
       audioRef.current.play().then(() => {
-        console.log('▶️ 用户播放音频');
+        console.log('🎶 音频播放成功');
         setIsPlaying(true);
       }).catch((err) => {
-        console.warn('⚠️ 播放失败:', err);
-        console.log('💡 提示：某些浏览器需要用户交互后才能播放音频');
+        console.warn('⚠️ 自动播放失败:', err);
+        setIsPlaying(false);
       });
+    } else if (!shouldPlay && isPlaying) {
+      console.log('⏸️ 停止音频播放');
+      audioRef.current.pause();
+      setIsPlaying(false);
     }
-  };
+  }, [isAutoRotating, isUserInteracting, handDetected, isPlaying, audioReady]);
 
-  return (
-    <div className="fixed top-[33.33%] right-4 z-50">
-      <div className="w-32 h-32 bg-gradient-to-br from-green-900/5 to-blue-900/5 backdrop-blur-sm rounded-2xl shadow-xl border-0 hover:shadow-2xl transition-all duration-300 hover:scale-110 overflow-hidden">
-        <Canvas
-          camera={{ position: [0, 0, 5], fov: 50 }}
-          style={{ 
-            borderRadius: '1rem',
-            border: 'none',
-            outline: 'none',
-            background: 'transparent'
-          }}
-        >
-          <ambientLight intensity={0.6} color="#FFA500" />
-          <pointLight position={[5, 5, 5]} intensity={0.3} color="#FFD700" />
-          <pointLight position={[-5, -5, 5]} intensity={0.2} color="#FF6347" />
-          
-          <ThreeDBell
-            isPlaying={isPlaying}
-            onClick={togglePlayPause}
-            position={[0, 0, 0]}
-            scale={1.2}
-          />
-          
-          <OrbitControls 
-            enableZoom={false} 
-            enablePan={false} 
-            enableRotate={false} 
-            enabled={false} 
-          />
-        </Canvas>
-      </div>
-    </div>
-  );
+  return null; // 这个组件不渲染任何UI，只处理音频逻辑
 };

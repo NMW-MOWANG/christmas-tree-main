@@ -134,7 +134,6 @@ const PolaroidItem: React.FC<{
   
   // Random sway offset
   const swayOffset = useMemo(() => Math.random() * 100, []);
-
   useFrame((state, delta) => {
     if (!groupRef.current) return;
 
@@ -187,11 +186,11 @@ const PolaroidItem: React.FC<{
         const tiltAngle = Math.cos(time * 1.5 + swayOffset) * 0.05;
         
         groupRef.current.rotateZ(swayAngle * delta * 5); // Apply over time or directly? 
-        // For stable sway, we add to the base rotation calculated above.
+        // For stable sway, we add to base rotation calculated above.
         // But since we slerp quaternion, let's just add manual rotation after slerp?
         // Easier: Set rotation directly based on dummy + sway.
         
-        // Calculate the "perfect" rotation
+        // Calculate "perfect" rotation
         const currentRot = new THREE.Euler().setFromQuaternion(groupRef.current.quaternion);
         groupRef.current.rotation.z = currentRot.z + swayAngle * 0.05; 
         groupRef.current.rotation.x = currentRot.x + tiltAngle * 0.05;
@@ -211,8 +210,6 @@ const PolaroidItem: React.FC<{
         
         const dummy = new THREE.Object3D();
         dummy.position.copy(groupRef.current.position);
-        
-        // Make photos face the camera
         dummy.lookAt(relativeCameraPos);
         
         // Smoothly rotate to face camera
@@ -316,7 +313,6 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, inde
       `${basePath}default-photos/photo7.jpg`,
       `${basePath}default-photos/photo9.jpg`,
       `${basePath}default-photos/photo10.jpg`,
-      // 新添加的照片 photo11-photo18
       `${basePath}default-photos/photo11.jpg`,
       `${basePath}default-photos/photo12.jpg`,
       `${basePath}default-photos/photo13.jpg`,

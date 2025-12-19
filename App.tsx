@@ -5,7 +5,6 @@ import { Loader } from '@react-three/drei';
 import { Experience } from './components/Experience';
 import { UIOverlay } from './components/UIOverlay';
 import { GestureController } from './components/GestureController';
-import { ThreeDAudioControl } from './components/ThreeDAudioControl';
 import { TreeMode } from './types';
 
 // Simple Error Boundary to catch 3D resource loading errors (like textures)
@@ -88,22 +87,10 @@ export default function App() {
       } else {
         // 竖屏设备
         fov = 45;
-        distance = 20;
+        distance = 30;
         console.log('📱 检测到竖屏设备，调整视角参数');
       }
       
-      // 根据屏幕尺寸进行微调
-      if (width < 768) {
-        // 移动设备适配
-        distance = Math.max(distance - 3, 18);
-        fov = Math.min(fov + 5, 60);
-        console.log('📱 移动设备适配完成');
-      } else if (width < 1024) {
-        // 平板设备适配
-        distance = Math.max(distance - 2, 20);
-        fov = Math.min(fov + 3, 58);
-        console.log('📱 平板设备适配完成');
-      }
       // 桌面设备使用默认参数
       
       setCameraConfig({ fov, distance });
@@ -178,9 +165,6 @@ export default function App() {
       />
       
       <UIOverlay mode={mode} onToggle={toggleMode} onPhotosUpload={handlePhotosUpload} hasPhotos={uploadedPhotos.length > 0} />
-      
-      {/* 背景音乐控制 */}
-      <ThreeDAudioControl />
       
       {/* Gesture Control Module */}
       <GestureController 

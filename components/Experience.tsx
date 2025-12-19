@@ -9,6 +9,7 @@ import { Ornaments } from './Ornaments';
 import { Polaroids } from './Polaroids';
 import { TreeStar } from './TreeStar';
 import { Snowfall } from './Snowfall';
+import { AutoAudioControl } from './AutoAudioControl';
 import { TreeMode } from '../types';
 
 interface ExperienceProps {
@@ -25,7 +26,10 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
   const controlsRef = useRef<any>(null);
   const lastClickTime = useRef<number>(0);
   const [isUserInteracting, setIsUserInteracting] = useState(false); // 用户是否正在交互
-  const autoRotateTimeoutRef = useRef<NodeJS.Timeout>(); // 自动旋转延迟定时器
+  const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null); // 自动旋转延迟定时器
+  const previousMode = useRef<TreeMode>(mode); // 跟踪上一个模式
+  const previousHandDetected = useRef<boolean>(handPosition.detected); // 跟踪手势检测状态
+  const hasAdjustedCameraForGesture = useRef<boolean>(false); // 标记是否已为手势调整过相机
 
   // 处理圣诞树双击
   const handleTreeClick = (event: any) => {
@@ -46,7 +50,49 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
     if (controlsRef.current) {
       const controls = controlsRef.current;
 
+      // 检测模式切换：从FORMED切换到CHAOS
+      if (previousMode.current === TreeMode.FORMED && mode === TreeMode.CHAOS) {
+        console.log('🎥 检测到FORMED→CHAOS切换，调整相机到正前方视角');
+        
+        // 设置相机到正前方视角（垂直于z=0平面）
+        const radius = controls.getDistance();
+        const targetY = 2; // 适中的垂直位置，查看爱心轮廓中心
+        
+        // 正前方视角：azimuth = 0, polar = Math.PI/2 (90度，水平视角)
+        const x = 0;
+        const y = targetY;
+        const z = radius;
+        
+        // 立即设置相机位置
+        controls.object.position.set(x, y, z);
+        controls.target.set(0, targetY, 0);
+        controls.update();
+      }
+      
+      // 更新上一个模式状态
+      previousMode.current = mode;
+
       if (handPosition.detected) {
+        // 检测手势开始：从未检测到检测到手势
+        if (!previousHandDetected.current && !hasAdjustedCameraForGesture.current) {
+          console.log('🙌 检测到手势开始，调整相机到正前方视角');
+          
+          // 设置相机到正前方视角（垂直于z=0平面）
+          const radius = controls.getDistance();
+          const targetY = 2; // 适中的垂直位置，查看爱心轮廓中心
+          
+          // 正前方视角：azimuth = 0, polar = Math.PI/2 (90度，水平视角)
+          const x = 0;
+          const y = targetY;
+          const z = radius;
+          
+          // 立即设置相机位置
+          controls.object.position.set(x, y, z);
+          controls.target.set(0, targetY, 0);
+          controls.update();
+          hasAdjustedCameraForGesture.current = true;
+        }
+
         // 手势控制模式
         // Map hand position to spherical coordinates
         // x: 0 (left) to 1 (right) -> azimuthal angle (horizontal rotation)
@@ -91,7 +137,14 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
         controls.object.position.set(x, y, z);
         controls.target.set(0, targetY, 0);
         controls.update();
+      } else {
+        // 手势结束，重置调整标记
+        hasAdjustedCameraForGesture.current = false;
       }
+      
+      // 更新上一个手势检测状态
+      previousHandDetected.current = handPosition.detected;
+      
       // 其他情况让 OrbitControls 处理，包括自动旋转和用户交互
     }
   });
@@ -105,22 +158,31 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
     };
   }, []);
 
+  // 计算音频控制所需的状态
+  const isAutoRotating = !handPosition.detected && !isUserInteracting;
+
   return (
     <>
+      {/* 自动音频控制 */}
+      <AutoAudioControl 
+        isAutoRotating={isAutoRotating}
+        isUserInteracting={isUserInteracting}
+        handDetected={handPosition.detected}
+      />
+
       <OrbitControls
         ref={controlsRef}
         enablePan={false}
-        minPolarAngle={Math.PI / 6}  // 最小俯视30度
-        maxPolarAngle={Math.PI / 2.2} // 最大俯视约82度
+        minPolarAngle={Math.PI / 4}            // 最小俯视角度（45度）
+        maxPolarAngle={Math.PI / 2.5}          // 最大俯视角度（约72度）
         minDistance={8}              // 缩短最小距离，确保圣诞树不超出屏幕
         maxDistance={25}             // 调整最大距离
         enableDamping
         dampingFactor={0.05}
         enabled={true}
         enableRotate={!handPosition.detected} // 手势控制时禁用手动旋转
-        autoRotate={!handPosition.detected && !isUserInteracting}  // 智能自动旋转
+        autoRotate={isAutoRotating}  // 智能自动旋转
         autoRotateSpeed={0.5}                  // 缓慢旋转速度
-        initialPolarAngle={Math.PI / 3}        // 初始俯视角度（60度）
 
         // 用户交互事件处理
         onStart={() => {
@@ -190,8 +252,8 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
           radius={0.6}              // 适中的泛光半径
           levels={6}                // 适中的泛光质量
         />
-        <Vignette eskil={false} offset={0.1} darkness={0.7} />  // 保持适度暗角
-        <Noise opacity={0.02} blendFunction={BlendFunction.OVERLAY} /> // 保持适度噪声
+        <Vignette eskil={false} offset={0.1} darkness={0.7} />
+        <Noise opacity={0.02} blendFunction={BlendFunction.OVERLAY} />
       </EffectComposer>
     </>
   );
