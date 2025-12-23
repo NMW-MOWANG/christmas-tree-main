@@ -32,6 +32,25 @@ interface PolaroidsProps {
   zoomedPolaroid?: number | null;
 }
 
+// 计算屏幕适配的缩放系数（类似爱心轮廓的计算方式）
+const calculateChaosScale = (): number => {
+  const aspect = window.innerWidth / window.innerHeight;
+  const fov = 45; // 与 Experience.tsx 中的默认 FOV 一致
+  const chaosPlaneDistance = 8; // 混沌模式拍立得距离中心的距离
+  
+  // 计算视锥体在该距离处的尺寸
+  const chaosPlaneHeight = 2 * Math.tan((fov * Math.PI / 180) / 2) * chaosPlaneDistance;
+  const chaosPlaneWidth = chaosPlaneHeight * aspect;
+  
+  // 参考爱心轮廓的计算方式：取较小值并乘以 0.6
+  const baseChaosScale = Math.min(chaosPlaneWidth, chaosPlaneHeight) * 0.6;
+  
+  // 归一化到合适的范围（以 FORMED 的 0.6 为基准）
+  // baseChaosScale 通常在 4-7 左右，我们希望 CHAOS 比 FORMED 稍大
+  // 所以这里除以一个系数让它接近 1.0-1.5 的范围
+  return baseChaosScale / 4.0; // 调整系数，使结果在合理范围
+};
+
 interface PhotoData {
   id: number;
   url: string;
@@ -47,9 +66,10 @@ const PolaroidItem: React.FC<{
   mode: TreeMode;
   index: number;
   isZoomed?: boolean;
-  zoomScale?: number;
+  chaosScale?: number; // 动态计算的 CHAOS 状态缩放
+  zoomScale?: number;  // ZOOMED 状态缩放
   onClick?: (index: number) => void;
-}> = ({ data, mode, index, isZoomed = false, zoomScale = 1, onClick }) => {
+}> = ({ data, mode, index, isZoomed = false, chaosScale = 1, zoomScale = 1.5, onClick }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [error, setError] = useState(false);
@@ -154,23 +174,46 @@ const PolaroidItem: React.FC<{
     groupRef.current.position.lerp(targetPos, step);
     
     // 应用缩放
-    let targetScale = 1; // 默认缩放
+    let targetScale: number;
 
     if (isZoomed) {
-      // ZOOM 状态的缩放由 zoomScale 控制
-      targetScale = zoomScale;
+      // ZOOM 状态：在 CHAOS 基础上放大
+      targetScale = chaosScale * zoomScale;
     } else if (isFormed) {
-      // FORMED 状态使用 0.6 缩放
+      // FORMED 状态：保持固定 0.6
       targetScale = 0.6;
+    } else {
+      // CHAOS 状态：使用动态计算的屏幕适配缩放
+      targetScale = chaosScale;
     }
-    // CHAOS 状态使用默认缩放 1.0
 
     const currentScale = groupRef.current.scale.x;
     groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), delta * 5);
 
     // 2. Rotation & Sway Logic
-    if (isFormed) {
-        // Look at center but face outward
+    if (isZoomed) {
+        // ZOOMED 状态：始终正对相机，完全跟随相机方向
+        const camera = state.camera;
+        const cameraWorldPos = new THREE.Vector3();
+        camera.getWorldPosition(cameraWorldPos);
+        
+        // 补偿场景组偏移 [0, -6, 0]
+        const relativeCameraPos = new THREE.Vector3(
+          cameraWorldPos.x,
+          cameraWorldPos.y + 6,
+          cameraWorldPos.z
+        );
+        
+        const dummy = new THREE.Object3D();
+        dummy.position.copy(groupRef.current.position);
+        dummy.lookAt(relativeCameraPos);
+        
+        // 快速且平滑地跟随相机朝向，确保始终正对屏幕
+        groupRef.current.quaternion.slerp(dummy.quaternion, delta * 8); // 更快的跟随速度
+        
+        // ZOOMED 状态不添加任何摆动效果，保持稳定
+    } else if (isFormed) {
+        // FORMED 状态：朝向树中心，背向外侧
         const dummy = new THREE.Object3D();
         dummy.position.copy(groupRef.current.position);
         dummy.lookAt(0, groupRef.current.position.y, 0); 
@@ -180,15 +223,8 @@ const PolaroidItem: React.FC<{
         groupRef.current.quaternion.slerp(dummy.quaternion, step);
         
         // Physical Swaying (Wind)
-        // Z-axis rotation for side-to-side swing
         const swayAngle = Math.sin(time * 2.0 + swayOffset) * 0.08;
-        // X-axis rotation for slight front-back tilt
         const tiltAngle = Math.cos(time * 1.5 + swayOffset) * 0.05;
-        
-        groupRef.current.rotateZ(swayAngle * delta * 5); // Apply over time or directly? 
-        // For stable sway, we add to base rotation calculated above.
-        // But since we slerp quaternion, let's just add manual rotation after slerp?
-        // Easier: Set rotation directly based on dummy + sway.
         
         // Calculate "perfect" rotation
         const currentRot = new THREE.Euler().setFromQuaternion(groupRef.current.quaternion);
@@ -196,15 +232,15 @@ const PolaroidItem: React.FC<{
         groupRef.current.rotation.x = currentRot.x + tiltAngle * 0.05;
         
     } else {
-        // Chaos mode - face toward camera with gentle floating
-        // 获取相机位置（考虑场景组偏移）
+        // CHAOS 状态：面向相机，带轻微漂浮效果
         const camera = state.camera;
         const cameraWorldPos = new THREE.Vector3();
         camera.getWorldPosition(cameraWorldPos);
-        // 场景组偏移是 [0, -6, 0]，所以相机相对位置需要调整
+        
+        // 补偿场景组偏移
         const relativeCameraPos = new THREE.Vector3(
           cameraWorldPos.x,
-          cameraWorldPos.y + 6, // 补偿场景组偏移
+          cameraWorldPos.y + 6,
           cameraWorldPos.z
         );
         
@@ -215,15 +251,13 @@ const PolaroidItem: React.FC<{
         // Smoothly rotate to face camera
         groupRef.current.quaternion.slerp(dummy.quaternion, delta * 3);
         
-        // Add gentle floating wobble (只在非放大状态)
-        if (!isZoomed) {
-          const wobbleX = Math.sin(time * 1.5 + swayOffset) * 0.03;
-          const wobbleZ = Math.cos(time * 1.2 + swayOffset) * 0.03;
-          
-          const currentRot = new THREE.Euler().setFromQuaternion(groupRef.current.quaternion);
-          groupRef.current.rotation.x = currentRot.x + wobbleX;
-          groupRef.current.rotation.z = currentRot.z + wobbleZ;
-        }
+        // Add gentle floating wobble
+        const wobbleX = Math.sin(time * 1.5 + swayOffset) * 0.03;
+        const wobbleZ = Math.cos(time * 1.2 + swayOffset) * 0.03;
+        
+        const currentRot = new THREE.Euler().setFromQuaternion(groupRef.current.quaternion);
+        groupRef.current.rotation.x = currentRot.x + wobbleX;
+        groupRef.current.rotation.z = currentRot.z + wobbleZ;
     }
   });
 
@@ -492,12 +526,16 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, inde
     console.log(`🎨 正在渲染 ${photoData.length} 个拍立得`);
   }, [photoData.length]);
 
+  // 计算屏幕适配的 CHAOS 缩放系数
+  const chaosScale = useMemo(() => calculateChaosScale(), []);
+  
+  // ZOOM 状态是 CHAOS 的 1.5 倍
+  const zoomMultiplier = 1.5;
+
   return (
     <group>
       {photoData.map((data, i) => {
         const isZoomed = zoomedPolaroid === i; // 使用传入的放大状态
-        // ZOOM 状态下，放大的照片尺寸是 CHAOS 状态下正常尺寸的 1.5 倍
-        const zoomScale = isZoomed ? 1.5 : 1;
 
         return (
           <PolaroidItem
@@ -506,7 +544,8 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, inde
             data={data}
             mode={mode}
             isZoomed={isZoomed}
-            zoomScale={zoomScale}
+            chaosScale={chaosScale}
+            zoomScale={zoomMultiplier}
             onClick={onPolaroidClick}
           />
         );

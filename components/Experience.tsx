@@ -182,7 +182,7 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
         enabled={true}
         enableRotate={!handPosition.detected} // 手势控制时禁用手动旋转
         autoRotate={isAutoRotating}  // 智能自动旋转
-        autoRotateSpeed={0.5}                  // 缓慢旋转速度
+        autoRotateSpeed={1}                  // 缓慢旋转速度
 
         // 用户交互事件处理
         onStart={() => {
@@ -199,7 +199,7 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
             // 延迟3秒后恢复自动旋转
             autoRotateTimeoutRef.current = setTimeout(() => {
               setIsUserInteracting(false);
-            }, 3000);
+            }, 1000);
           }
         }}
       />
