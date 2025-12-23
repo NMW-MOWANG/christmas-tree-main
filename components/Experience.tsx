@@ -221,7 +221,7 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
       {/* 雪花效果 */}
       <Snowfall />
 
-      <group position={[0, -6, 0]} onClick={handleTreeClick}>
+      <group position={[0, -8, 0]} onClick={handleTreeClick}>
         <Foliage mode={mode} count={12000} />
         <Ornaments mode={mode} count={600} />
         <Polaroids
