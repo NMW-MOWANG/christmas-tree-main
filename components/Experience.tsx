@@ -182,7 +182,7 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
         enabled={true}
         enableRotate={!handPosition.detected} // 手势控制时禁用手动旋转
         autoRotate={isAutoRotating}  // 智能自动旋转
-        autoRotateSpeed={1}                  // 缓慢旋转速度
+        autoRotateSpeed={0.8}                  // 缓慢旋转速度
 
         // 用户交互事件处理
         onStart={() => {
