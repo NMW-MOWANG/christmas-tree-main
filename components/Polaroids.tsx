@@ -69,7 +69,7 @@ const PolaroidItem: React.FC<{
   chaosScale?: number; // 动态计算的 CHAOS 状态缩放
   zoomScale?: number;  // ZOOMED 状态缩放
   onClick?: (index: number) => void;
-}> = ({ data, mode, index, isZoomed = false, chaosScale = 1, zoomScale = 1.5, onClick }) => {
+}> = ({ data, mode, index, isZoomed = false, chaosScale = 1, zoomScale = 2, onClick }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [error, setError] = useState(false);
@@ -163,9 +163,30 @@ const PolaroidItem: React.FC<{
     // 1. Position Interpolation
     let targetPos = isFormed ? data.targetPos : data.chaosPos;
 
-    // 如果被放大，使用专门的放大位置
+    // 如果被放大，动态计算位置以始终在相机正前方
     if (isZoomed) {
-      targetPos = data.zoomPos;
+      const camera = state.camera;
+      const cameraWorldPos = new THREE.Vector3();
+      camera.getWorldPosition(cameraWorldPos);
+
+      // 计算相机的角度（从 xz 平面看）
+      const cameraAngle = Math.atan2(cameraWorldPos.x, cameraWorldPos.z);
+
+      // 设计拍立得的运动轨迹为更小的内圈
+      // 相机在较大半径的圆上运动，拍立得在较小半径的圆上跟随
+      const cameraRadius = Math.sqrt(cameraWorldPos.x * cameraWorldPos.x + cameraWorldPos.z * cameraWorldPos.z);
+      const polaroidRadius = cameraRadius * 0.3; // 拍立得在相机轨迹的30%半径位置
+
+      // 计算拍立得在内圈上的位置
+      const targetX = Math.sin(cameraAngle) * polaroidRadius;
+      const targetZ = Math.cos(cameraAngle) * polaroidRadius;
+
+      // 创建动态位置，y 坐标比 FORMED 状态高 2 个单位
+      targetPos = new THREE.Vector3(
+        targetX,
+        Math.max(data.targetPos.y + 2, 8), // 确保最低高度为8，比FORMED状态明显更高
+        targetZ
+      );
     }
     
     const step = delta * data.speed;
@@ -192,26 +213,30 @@ const PolaroidItem: React.FC<{
 
     // 2. Rotation & Sway Logic
     if (isZoomed) {
-        // ZOOMED 状态：始终正对相机，完全跟随相机方向
+        // ZOOMED 状态：始终正对相机屏幕，完全居中展示
         const camera = state.camera;
         const cameraWorldPos = new THREE.Vector3();
         camera.getWorldPosition(cameraWorldPos);
-        
-        // 补偿场景组偏移 [0, -6, 0]
+
+        // 补偿场景组偏移 [0, -6, 0] 并确保指向屏幕中心
         const relativeCameraPos = new THREE.Vector3(
           cameraWorldPos.x,
           cameraWorldPos.y + 6,
           cameraWorldPos.z
         );
-        
+
+        // 确保拍立得平面与相机视图平面平行，正对屏幕中心
         const dummy = new THREE.Object3D();
         dummy.position.copy(groupRef.current.position);
+
+        // 使用更精确的朝向计算：直接看向相机位置
         dummy.lookAt(relativeCameraPos);
-        
-        // 快速且平滑地跟随相机朝向，确保始终正对屏幕
-        groupRef.current.quaternion.slerp(dummy.quaternion, delta * 8); // 更快的跟随速度
-        
-        // ZOOMED 状态不添加任何摆动效果，保持稳定
+
+        // 超快速且精确地跟随相机朝向，确保始终完美正对屏幕
+        groupRef.current.quaternion.slerp(dummy.quaternion, delta * 12); // 提高跟随速度
+
+        // ZOOMED 状态不添加任何摆动效果，确保绝对稳定
+        // 确保没有额外的旋转干扰
     } else if (isFormed) {
         // FORMED 状态：朝向树中心，背向外侧
         const dummy = new THREE.Object3D();
@@ -442,43 +467,61 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, inde
       chaosX += (Math.random() - 0.5) * 0.1;
       chaosY += (Math.random() - 0.5) * 0.05;
 
-      // 调高Y坐标确保在屏幕中心显示
-      chaosY += 5; // 向上偏移5个单位，使爱心轮廓在屏幕中心
+      // 调高Y坐标确保在屏幕中心显示，并比FORMED状态高2个单位
+      chaosY += 7; // 向上偏移7个单位（5+2），使爱心轮廓在屏幕中心且比FORMED高2
 
       const chaosZ = 0; // 固定Z位置，在空间中心附近
 
       const chaosPos = new THREE.Vector3(chaosX, chaosY, chaosZ); // 调整后的位置
 
-      // 3. Zoom Position - 展示位置（屏幕中央附近）
-      // 为依次展示模式设计，确保照片在屏幕合适位置
-      const zoomZ = cameraZ - 6; // 稍微靠近相机
+      // 3. Zoom Position - 展示位置（屏幕正前方自适应）
+      // 为依次展示模式设计，确保照片始终在屏幕正前方
 
-      // 使用固定的展示位置，避免过高或过低
-      const zoomX = 0; // 水平居中
-      const zoomY = 2; // 适中的垂直位置，不会超出屏幕
+      // 计算屏幕自适应的中心位置
+      const calculateCenteredPosition = () => {
+        const aspect = window.innerWidth / window.innerHeight;
+        const fov = 45; // 默认FOV，与相机保持一致
+        const targetDistance = cameraZ - 6; // 稍微靠近相机
 
-      // 添加微小的随机偏移，让每张照片有细微差异
-      const microOffset = 0.2; // 微小偏移量
+        // 计算视锥体在目标距离处的尺寸
+        const viewportHeight = 2 * Math.tan((fov * Math.PI / 180) / 2) * targetDistance;
+        const viewportWidth = viewportHeight * aspect;
 
-      // 添加基于索引的微小偏移，让每次展示有细微位置变化
-      const finalZoomX = zoomX + (Math.random() - 0.5) * microOffset;
-      const finalZoomY = zoomY + (Math.random() - 0.5) * microOffset;
+        // 确保拍立得在视锥体中心附近，考虑场景组偏移
+        // 场景组有 [0, -6, 0] 偏移，所以需要补偿
+        const centerX = 0; // 水平居中
+        const centerY = 8; // 垂直居中位置，+6补偿场景组偏移，+4比FORMED高
 
-      // 根据位置计算距离相机的距离，用于自适应缩放
-      const distanceToCamera = Math.sqrt(finalZoomX * finalZoomX + finalZoomY * finalZoomY + zoomZ * zoomZ);
-      const minDistance = Math.abs(zoomZ); // 最小距离是正前方的距离
+        // 添加极小的随机偏移以保持自然感，但确保始终在视锥体内
+        const maxOffset = Math.min(viewportWidth * 0.1, 0.5); // 限制最大偏移
+        const offsetX = (Math.random() - 0.5) * maxOffset;
+        const offsetY = (Math.random() - 0.5) * maxOffset * 0.5; // Y轴偏移更小
 
-      // 简化距离因子计算
-      const distanceFactor = Math.max(0.5, Math.min(1.0, 1 - (distanceToCamera - minDistance) / 10));
-      const clampedDistanceFactor = Math.max(0.2, Math.min(1.0, distanceFactor)); // 确保在合理范围内
+        return {
+          x: centerX + offsetX,
+          y: centerY + offsetY,
+          z: targetDistance,
+          distanceFactor: 1.0 // 居中位置时使用最大距离因子
+        };
+      };
 
-      const zoomPos = new THREE.Vector3(finalZoomX, finalZoomY + 5, zoomZ); // y+5 补偿场景组偏移
+      const centeredPos = calculateCenteredPosition();
+      const finalZoomX = centeredPos.x;
+      const finalZoomY = centeredPos.y;
+
+      // 使用自适应位置计算的距离因子
+      const zoomZ = centeredPos.z;
+      const distanceFactor = centeredPos.distanceFactor;
+      const clampedDistanceFactor = distanceFactor; // 已是正确值
+
+      const zoomPos = new THREE.Vector3(finalZoomX, finalZoomY, zoomZ); // 已包含场景组偏移补偿
 
       // 调试信息
       if (i === 0) {
-        console.log(`🎄 ZOOM 分布模式: 屏幕中央依次展示`);
-        console.log(`📷 照片数量: ${count}, 展示位置: 屏幕中央`);
-        console.log(`💖 Polaroid ${i}: 展示位置(${finalZoomX.toFixed(2)}, ${finalZoomY.toFixed(2)}, ${zoomZ}), 距离因子: ${clampedDistanceFactor.toFixed(2)}`);
+        const aspect = window.innerWidth / window.innerHeight;
+        console.log(`🎯 ZOOM 自适应模式: 屏幕正前方居中展示`);
+        console.log(`📷 照片数量: ${count}, 屏幕比例: ${aspect.toFixed(2)}`);
+        console.log(`💖 Polaroid ${i}: 自适应位置(${finalZoomX.toFixed(2)}, ${finalZoomY.toFixed(2)}, ${zoomZ.toFixed(2)})`);
       }
 
       data.push({
@@ -530,7 +573,7 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, inde
   const chaosScale = useMemo(() => calculateChaosScale(), []);
   
   // ZOOM 状态是 CHAOS 的 1.5 倍
-  const zoomMultiplier = 1.5;
+  const zoomMultiplier = 5;
 
   return (
     <group>
